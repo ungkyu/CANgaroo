@@ -309,3 +309,17 @@ windeployqt 실행 시 Direct3D 12 관련 `dxcompiler.dll`, `dxil.dll` 탐색 �
 | 2026-11-08 | FEAT-001 | Vector / Candlelight nominal 80% 구현, 테스트 추가 | 빌드·테스트 완료, 장비 검증 대기 |
 | 2026-11-08 | BUILD-002 | 임시 EXE 생성 후 기본 `cangaroo.exe`로 재빌드 | 완료 |
 | 2026-11-08 | DOC-002 | 한국어 문서 이름에 `_kor` 추가, 누락 내역 보완, `_eng` 영어본 생성 | 기능 변경과 함께 Git 관리 |
+## 13. FEAT-002: DBC 메시지 주기로 Tx Generator 등록 (2026-11-08)
+
+- DBC 메시지별 `BA_ "GenMsgCycleTime" BO_ <ID> <ms>;`를 읽어 interval 초기값으로 등록한다.
+- 메시지별 값이 없으면 DBC의 `BA_DEF_DEF_ "GenMsgCycleTime" <ms>;` 기본값을 사용한다. 둘 다 없으면 **0 ms**로 등록한다.
+- 명시적인 메시지 값이 기본값보다 우선하며, 명시적인 0도 유지한다. 음수, 소수 및 int 범위를 넘는 메시지 주기는 0으로 처리한다.
+- DBC 메시지 모델에 주기를 보관하고 데이터베이스 갱신 시에도 복사한다. 확장 CAN ID의 DBC 메시지 속성도 지원한다.
+- DBC에서 새로 등록하는 메시지는 더 이상 고정 100 ms를 사용하지 않는다. 이미 송신 목록에 등록된 메시지의 사용자가 설정한 interval이나 저장된 interval은 자동으로 덮어쓰지 않는다.
+- Interval 입력창에서 0을 허용하고 최대값을 int 범위(2,147,483,647 ms)로 확장하여 큰 DBC 주기를 선택 시 잘라내지 않는다.
+- **0 ms는 주기 미정 / 반복 송신 없음**이다. 0을 1 ms로 바꾸어 자동 송신하지 않으며, 반복 송신 시작을 거부한다. 송신 중 interval을 0으로 바꾸면 그 메시지의 반복 송신을 중지한다. Send Once는 유지한다.
+- 수동 메시지 추가는 기존처럼 Interval 입력값을 사용하며 최초 기본값은 100 ms이다.
+- DBC 파서 테스트: 37 passed / 0 failed (초기화/정리 포함). 누락, 명시 값, 기본값 및 우선순위, 0, 음수, 소수, overflow, 다른 메시지/잘못된 scope, 큰 주기, 확장 ID, 데이터베이스 갱신을 확인했다.
+- 테스트 결과: `build/tests/dbc-cycle-time-results.txt`. 앱 빌드 로그: `build/dbc-cycle-time-build.log`.
+- 실제 GUI 조작 및 CAN 장비 주기 송신 검증은 별도로 필요하다. 커밋 제목: `feat: initialize Tx intervals from DBC cycle times`. 실제 커밋 ID와 원격 동기화 상태는 Git에서 확인한다.
+- 앱 Release 컴파일/링크 완료: 기본 `build/qt-mingw-release/bin/cangaroo.exe`에 FEAT-002 반영.

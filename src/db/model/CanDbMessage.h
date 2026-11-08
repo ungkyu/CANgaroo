@@ -46,6 +46,9 @@ class CanDbMessage
         uint8_t getDlc() const;
         void setDlc(const uint8_t &dlc);
 
+        int getCycleTimeMs() const { return _cycleTimeMs; }
+        void setCycleTimeMs(int value) { _cycleTimeMs = value > 0 ? value : 0; }
+
         CanDbNode *getSender() const;
         void setSender(CanDbNode *sender);
 
@@ -66,6 +69,7 @@ private:
         QString _name;
         uint32_t _raw_id;
         uint8_t _dlc;
+        int _cycleTimeMs = 0; // GenMsgCycleTime; zero means unspecified/non-cyclic.
         CanDbNode *_sender;
         CanDbSignalList _signals;
         QString _comment;

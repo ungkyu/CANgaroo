@@ -25,6 +25,7 @@
 #include <QStringEncoder>
 #include <stdint.h>
 #include <iostream>
+#include <limits>
 #include "core/Log.h"
 #include "db/model/CanDb.h"
 
@@ -370,6 +371,8 @@ bool DbcParser::parse(CanDb &candb, DbcTokenList &tokens)
     _dbcVersion.clear();
     _nsEntries.clear();
     _buEntries.clear();
+    _messageCycleTimes.clear();
+    _defaultMessageCycleTime = 0;
 
     while (!tokens.isEmpty()) {
         if (!parseSection(candb, tokens)) {
@@ -377,6 +380,9 @@ bool DbcParser::parse(CanDb &candb, DbcTokenList &tokens)
         }
     }
 
+    for (auto *message : candb.getMessageList()) {
+        message->setCycleTimeMs(_messageCycleTimes.value(message->getRaw_id(), _defaultMessageCycleTime));
+    }
     return true;
 }
 
@@ -410,6 +416,8 @@ bool DbcParser::parseSection(CanDb &candb, DbcTokenList &tokens) {
                 retval &= parseSectionVal(candb, tokens);
             } else if (sectionName == "BA_") {
                 parseSectionBa(candb, tokens);
+            } else if (sectionName == "BA_DEF_DEF_") {
+                parseSectionBaDefault(tokens);
             } else {
                 skipUntilSectionEnding(tokens);
             }
@@ -690,12 +698,34 @@ bool DbcParser::parseSectionVal(CanDb &candb, DbcParser::DbcTokenList &tokens)
 
 void DbcParser::parseSectionBa(CanDb &candb, DbcParser::DbcTokenList &tokens)
 {
-    // Only the global ProtocolType attribute is modelled; every other attribute
-    // is skipped. Never fails, so an unusual BA_ line cannot reject the file.
+    // Unknown/malformed attributes must not reject an otherwise usable DBC.
     QString name;
     QString value;
-    if (expectString(tokens, &name) && (name == "ProtocolType") && expectString(tokens, &value)) {
-        candb.setJ1939(value.compare("J1939", Qt::CaseInsensitive) == 0);
+    if (expectString(tokens, &name)) {
+        if (name == "ProtocolType" && expectString(tokens, &value)) {
+            candb.setJ1939(value.compare("J1939", Qt::CaseInsensitive) == 0);
+        } else if (name == "GenMsgCycleTime") {
+            QString scope;
+            long long rawId;
+            int cycleTime = 0;
+            if (expectIdentifier(tokens, &scope) && scope == "BO_"
+                && expectLongLong(tokens, &rawId) && rawId >= 0
+                && rawId <= std::numeric_limits<uint32_t>::max()) {
+                if (!expectInt(tokens, &cycleTime) || cycleTime < 0)
+                    cycleTime = 0;
+                _messageCycleTimes.insert(uint32_t(rawId), cycleTime);
+            }
+        }
     }
+    skipUntilSectionEnding(tokens);
+}
+
+void DbcParser::parseSectionBaDefault(DbcTokenList &tokens)
+{
+    QString name;
+    int cycleTime;
+    if (expectString(tokens, &name) && name == "GenMsgCycleTime"
+        && expectInt(tokens, &cycleTime) && cycleTime >= 0)
+        _defaultMessageCycleTime = cycleTime;
     skipUntilSectionEnding(tokens);
 }

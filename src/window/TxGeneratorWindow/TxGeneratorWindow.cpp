@@ -96,6 +96,7 @@ TxGeneratorWindow::TxGeneratorWindow(QWidget *parent, Backend &backend) :
     _bitMatrixWidget->setFixedSize(_bitMatrixWidget->sizeHint());
 
     ui->spinInterval->setSuffix(" ms");
+    ui->spinInterval->setToolTip(tr("0 ms: no cyclic transmission. Set a positive interval to start; Send Once remains available."));
     ui->spinInterval->setMinimumWidth(0);
 
     ui->lineManualId->setInputMask("");
@@ -395,7 +396,7 @@ void TxGeneratorWindow::on_btnAddToList_released()
         cm.msg.setLength(dbMsg->getDlc());
         cm.msg.setExtended(dbMsg->getRaw_id() > 0x7FF);
         cm.name = dbMsg->getName();
-        cm.interval = 100;
+        cm.interval = dbMsg->getCycleTimeMs();
         cm.enabled = false;
         cm.nextDue = {};
         cm.interfaceId = static_cast<BusInterfaceId>(ui->comboBoxInterface->currentData().toUInt());
@@ -660,7 +661,7 @@ void TxGeneratorWindow::on_treeActive_itemChanged(QTreeWidgetItem *item, int col
         if (column == 5) {
             bool ok;
             int interval = item->text(5).toInt(&ok);
-            if (ok && interval > 0 && _cyclicMessages[row].interval != interval) {
+            if (ok && interval >= 0 && _cyclicMessages[row].interval != interval) {
                 setInterval(row, interval);
 
                 // If this item is part of a selection, apply to all selected items
@@ -728,7 +729,7 @@ void TxGeneratorWindow::onSendTimerTimeout()
 
     for (int i = 0; i < _cyclicMessages.size(); ++i) {
         CyclicMessage &cm = _cyclicMessages[i];
-        if (!cm.enabled) { continue; }
+        if (!cm.enabled || cm.interval <= 0) { continue; }
 
         const auto period = std::chrono::milliseconds(std::max(1, cm.interval));
         if (cm.nextDue == TxClock::time_point{}) { cm.nextDue = now; } // first send after enable
@@ -884,6 +885,10 @@ void TxGeneratorWindow::setInterval(int row, int interval_ms)
 {
     CyclicMessage &cm = _cyclicMessages[row];
     cm.interval = interval_ms;
+    if (interval_ms <= 0) {
+        cm.enabled = false;
+        cm.nextDue = {};
+    }
 
     // A shorter cycle time must take effect now, not after the deadline that was
     // armed for the old (longer) one.
@@ -897,6 +902,10 @@ void TxGeneratorWindow::setEnabled(int row, bool enabled)
 {
     CyclicMessage &cm = _cyclicMessages[row];
     if (enabled && !_backend.isMeasurementRunning()) { return; } // nothing can be sent
+    if (enabled && cm.interval <= 0) {
+        log_warning("TxGeneratorWindow: Set an interval greater than 0 ms before starting cyclic transmission.");
+        return;
+    }
     if (enabled && !cm.enabled) { cm.nextDue = {}; } // fresh schedule, send immediately
     cm.enabled = enabled;
     updateRowUI(row);
@@ -912,7 +921,7 @@ void TxGeneratorWindow::updateSendTimer()
     const auto now = TxClock::now();
     std::optional<TxClock::time_point> earliest;
     for (const CyclicMessage &cm : std::as_const(_cyclicMessages)) {
-        if (!cm.enabled) { continue; }
+        if (!cm.enabled || cm.interval <= 0) { continue; }
         // An unscheduled message is due right away.
         const auto due = (cm.nextDue == TxClock::time_point{}) ? now : cm.nextDue;
         if (!earliest || due < *earliest) { earliest = due; }

@@ -121,6 +121,7 @@ void CanDb::updateFrom(CanDb *other)
         // per-signal isMuxer flag below does not establish it. Rebuild it from
         // the incoming database: cleared first, so a message that lost its
         // multiplexer does not keep pointing at a stale signal.
+        myMsg->setCycleTimeMs(otherMsg->getCycleTimeMs());
         myMsg->setMuxer(nullptr);
 
         for (CanDbSignal *otherSig : otherMsg->getSignals()) {

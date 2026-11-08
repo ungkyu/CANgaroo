@@ -71,6 +71,9 @@ private slots:
 
     void protocolTypeFlagsJ1939Database();
     void otherAttributesAreSkipped();
+    void messageCycleTime_data();
+    void messageCycleTime();
+    void cycleTimeCopiedOnDatabaseUpdate();
     void parsesMultiplexer();
     void parsesValueTable();
     void parsesComments();
@@ -261,6 +264,50 @@ BA_ "ProtocolType" "CAN";
 )", db));
     QVERIFY(!db.isJ1939());
     QVERIFY(db.getMessageById(100) != nullptr);
+    QCOMPARE(db.getMessageById(100)->getCycleTimeMs(), 50);
+}
+
+void DbcParserTest::messageCycleTime_data()
+{
+    QTest::addColumn<QString>("attributes");
+    QTest::addColumn<int>("expected");
+    QTest::newRow("missing") << QString() << 0;
+    QTest::newRow("explicit") << QString("BA_ \"GenMsgCycleTime\" BO_ 100 20;\n") << 20;
+    QTest::newRow("zero") << QString("BA_ \"GenMsgCycleTime\" BO_ 100 0;\n") << 0;
+    QTest::newRow("default") << QString("BA_DEF_DEF_ \"GenMsgCycleTime\" 75;\n") << 75;
+    QTest::newRow("explicit-over-default") << QString("BA_ \"GenMsgCycleTime\" BO_ 100 20;\nBA_DEF_DEF_ \"GenMsgCycleTime\" 75;\n") << 20;
+    QTest::newRow("zero-over-default") << QString("BA_DEF_DEF_ \"GenMsgCycleTime\" 75;\nBA_ \"GenMsgCycleTime\" BO_ 100 0;\n") << 0;
+    QTest::newRow("negative") << QString("BA_ \"GenMsgCycleTime\" BO_ 100 -1;\n") << 0;
+    QTest::newRow("overflow") << QString("BA_ \"GenMsgCycleTime\" BO_ 100 2147483648;\n") << 0;
+    QTest::newRow("fractional") << QString("BA_ \"GenMsgCycleTime\" BO_ 100 12.5;\n") << 0;
+    QTest::newRow("unknown-message") << QString("BA_ \"GenMsgCycleTime\" BO_ 101 90;\n") << 0;
+    QTest::newRow("wrong-scope") << QString("BA_ \"GenMsgCycleTime\" SG_ 100 Sig 10;\n") << 0;
+    QTest::newRow("large-interval") << QString("BA_ \"GenMsgCycleTime\" BO_ 100 200000;\n") << 200000;
+}
+
+void DbcParserTest::messageCycleTime()
+{
+    QFETCH(QString, attributes);
+    QFETCH(int, expected);
+    CanDb db;
+    QVERIFY(parse(QString("BO_ 100 Msg: 8 ECU_A\n SG_ Sig : 0|8@1+ (1,0) [0|255] \"\" ECU_B\n\n") + attributes, db));
+    QCOMPARE(db.getMessageById(100)->getCycleTimeMs(), expected);
+}
+
+void DbcParserTest::cycleTimeCopiedOnDatabaseUpdate()
+{
+    CanDb source, destination;
+    QVERIFY(parse(R"(BO_ 2147483939 Extended: 8 ECU_A
+ SG_ Sig : 0|8@1+ (1,0) [0|255] "" ECU_B
+
+BA_ "GenMsgCycleTime" BO_ 2147483939 40;
+)", source));
+    QCOMPARE(source.getMessageById(2147483939u)->getCycleTimeMs(), 40);
+    destination.updateFrom(&source);
+    QCOMPARE(destination.getMessageById(2147483939u)->getCycleTimeMs(), 40);
+    source.getMessageById(2147483939u)->setCycleTimeMs(0);
+    destination.updateFrom(&source);
+    QCOMPARE(destination.getMessageById(2147483939u)->getCycleTimeMs(), 0);
 }
 
 void DbcParserTest::parsesMultiplexer()

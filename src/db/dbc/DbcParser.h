@@ -25,6 +25,7 @@
 #include <QFile>
 #include <QRegularExpression>
 #include <QList>
+#include <QHash>
 #include <qstringlist.h>
 
 #include "db/model/CanDb.h"
@@ -56,6 +57,8 @@ private:
     QString _dbcVersion;
     QStringList _nsEntries;
     QStringList _buEntries;
+    QHash<uint32_t, int> _messageCycleTimes;
+    int _defaultMessageCycleTime = 0;
 
     DbcToken *createNewToken(QChar ch, int line, int column);
     error_t tokenize(QFile *file, DbcTokenList &tokens);
@@ -90,5 +93,6 @@ private:
     bool parseSectionCm(CanDb &candb, DbcTokenList &tokens);
     bool parseSectionVal(CanDb &candb, DbcTokenList &tokens);
     void parseSectionBa(CanDb &candb, DbcTokenList &tokens);
+    void parseSectionBaDefault(DbcTokenList &tokens);
 
 };

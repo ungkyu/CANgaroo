@@ -297,3 +297,18 @@ Missing initialization access, XL configuration errors, and FD sample points tha
 - After the user closed the app and the remaining hidden test processes were stopped, the standard build script compiled/linked `cangaroo.exe` successfully.
 - Latest standard executable: `build/qt-mingw-release/bin/cangaroo.exe`, build verified at 18:30 KST on 2026-11-08.
 - Manual selection of the new GUI presets, settings save/reload, and physical Vector/Candlelight communication remain unverified.
+
+## 13. FEAT-002: Initialize Tx Generator intervals from DBC cycle times (2026-11-08)
+
+- Parse per-message `BA_ "GenMsgCycleTime" BO_ <ID> <ms>;` and use it as the initial interval when adding a DBC message.
+- If the message has no explicit value, use `BA_DEF_DEF_ "GenMsgCycleTime" <ms>;` when present. If neither is defined, register **0 ms**.
+- Explicit values override defaults, including explicit zero. Negative, fractional, and out-of-int-range message values are treated as zero.
+- Store the cycle time in the message model and copy it during database updates. Extended-ID DBC message attributes are supported.
+- Newly added DBC messages no longer receive a hardcoded 100 ms interval. Existing generator rows and saved user intervals are not automatically overwritten.
+- Allow zero in the Interval spin box and expand its maximum to 2,147,483,647 ms, preventing large DBC intervals from being truncated when selected.
+- **0 ms means unspecified / no cyclic transmission.** It is not converted into a 1 ms transmit loop. Starting cyclic transmission at zero is rejected; changing a running row to zero stops its cyclic transmission. Send Once remains available.
+- Manual message addition still uses the Interval control, initially 100 ms.
+- DBC parser tests: 37 passed / 0 failed, including initialization/cleanup. Coverage includes missing/explicit/default values, precedence, zero, negative/fractional/overflow values, unrelated IDs/scopes, large intervals, extended IDs, and database updates.
+- Test results: `build/tests/dbc-cycle-time-results.txt`. Application build log: `build/dbc-cycle-time-build.log`.
+- GUI interaction and hardware transmission timing require separate verification. Commit title: `feat: initialize Tx intervals from DBC cycle times`. Check Git for the actual commit ID and remote synchronization status.
+- Release compilation/linking completed: FEAT-002 is included in the standard `build/qt-mingw-release/bin/cangaroo.exe`.
