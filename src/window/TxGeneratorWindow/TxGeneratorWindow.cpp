@@ -19,6 +19,7 @@
 
 #include "TxGeneratorWindow.h"
 #include "ui_TxGeneratorWindow.h"
+#include "TxGeneratorListUtils.h"
 
 #include <algorithm>
 #include <chrono>
@@ -31,6 +32,8 @@
 #include <QVBoxLayout>
 #include <QDialogButtonBox>
 #include <QComboBox>
+#include <QMessageBox>
+#include <QSet>
 #include "core/Backend.h"
 #include "core/MeasurementNetwork.h"
 #include "core/MeasurementSetup.h"
@@ -336,6 +339,7 @@ void TxGeneratorWindow::populateDbcMessages()
             }
         }
     }
+    on_lineEditSearchAvailable_textChanged(ui->lineEditSearchAvailable->text());
 }
 
 void TxGeneratorWindow::on_lineEditSearchAvailable_textChanged(const QString &text)
@@ -344,7 +348,88 @@ void TxGeneratorWindow::on_lineEditSearchAvailable_textChanged(const QString &te
         QTreeWidgetItem *item = ui->treeAvailable->topLevelItem(i);
         bool match = item->text(0).contains(text, Qt::CaseInsensitive) || item->text(1).contains(text, Qt::CaseInsensitive);
         item->setHidden(!match);
+        if (!match) {
+            item->setSelected(false);
+            if (ui->treeAvailable->currentItem() == item)
+                ui->treeAvailable->setCurrentItem(nullptr);
+        }
     }
+}
+
+void TxGeneratorWindow::on_lineEditSearchActive_textChanged(const QString &)
+{
+    applyActiveFilter();
+}
+
+void TxGeneratorWindow::applyActiveFilter()
+{
+    for (int row = 0; row < ui->treeActive->topLevelItemCount(); ++row) {
+        auto *item = ui->treeActive->topLevelItem(row);
+        const bool visible = txGeneratorMatchesSearch(ui->lineEditSearchActive->text(),
+            {item->text(1), item->text(2), item->text(3),
+             QString::number(_cyclicMessages[row].msg.getId())});
+        item->setHidden(!visible);
+        if (!visible) {
+            item->setSelected(false);
+            if (ui->treeActive->currentItem() == item)
+                ui->treeActive->setCurrentItem(nullptr);
+        }
+    }
+}
+
+void TxGeneratorWindow::on_btnRemoveDuplicates_released()
+{
+    QSet<QByteArray> seen;
+    QList<int> duplicates;
+    QStringList removed;
+    for (int row = 0; row < _cyclicMessages.size(); ++row) {
+        const auto &cm = _cyclicMessages[row];
+        auto *intf = _backend.getInterfaceById(cm.interfaceId);
+        const QString interfaceIdentity = intf
+            ? QString("id:%1").arg(cm.interfaceId)
+            : QString("unresolved:%1:%2").arg(cm.interfaceId).arg(cm.interfaceName);
+        QByteArray payload;
+        for (int byte = 0; byte < cm.msg.getLength(); ++byte)
+            payload.append(char(cm.msg.getByte(byte)));
+        const auto key = txGeneratorDuplicateKey(interfaceIdentity, cm.msg.getId(),
+            cm.msg.isExtended(), cm.msg.isFD(), cm.msg.isBRS(), cm.msg.isRTR(), cm.interval, payload);
+        if (seen.contains(key)) {
+            duplicates.append(row);
+            const QString id = QString("0x%1").arg(cm.msg.getId(), 3, 16, QChar('0')).toUpper();
+            const QString interfaceName = intf ? intf->getName()
+                : (cm.interfaceName.isEmpty() ? QString::number(cm.interfaceId) : cm.interfaceName);
+            removed.append(tr("Row %1: %2 | %3 | %4 | %5 ms | data %6%7")
+                .arg(row + 1).arg(cm.name, id, interfaceName).arg(cm.interval)
+                .arg(QString::fromLatin1(payload.toHex(' ')))
+                .arg(cm.enabled ? tr(" (was transmitting)") : QString()));
+        } else {
+            seen.insert(key);
+        }
+    }
+    if (duplicates.isEmpty()) {
+        QMessageBox::information(this, tr("Remove Duplicates"), tr("No duplicate messages found."));
+        return;
+    }
+
+    // Selection indices refer to the old list. Do not transfer them to new rows.
+    ui->treeActive->clearSelection();
+    ui->treeActive->setCurrentItem(nullptr);
+    for (auto it = duplicates.crbegin(); it != duplicates.crend(); ++it)
+        _cyclicMessages.removeAt(*it);
+    updateActiveList();
+    on_treeActive_itemSelectionChanged();
+    updateSendTimer();
+
+    QMessageBox report(this);
+    report.setIcon(QMessageBox::Information);
+    report.setTextFormat(Qt::PlainText);
+    report.setWindowTitle(tr("Duplicates Removed"));
+    report.setText(tr("Removed %1 duplicate row(s). The first occurrence of each configuration was kept.")
+                       .arg(duplicates.size()));
+    report.setInformativeText(removed.mid(0, 8).join('\n')
+        + (removed.size() > 8 ? tr("\nSee details for the complete list.") : QString()));
+    report.setDetailedText(removed.join('\n'));
+    report.exec();
 }
 
 void TxGeneratorWindow::on_treeAvailable_itemSelectionChanged()
@@ -682,7 +767,10 @@ void TxGeneratorWindow::on_treeActive_itemChanged(QTreeWidgetItem *item, int col
 
 void TxGeneratorWindow::on_btnSelectAll_released()
 {
-    ui->treeActive->selectAll();
+    for (int row = 0; row < ui->treeActive->topLevelItemCount(); ++row) {
+        auto *item = ui->treeActive->topLevelItem(row);
+        item->setSelected(!item->isHidden());
+    }
 }
 
 void TxGeneratorWindow::on_btnClearAll_released()
@@ -830,6 +918,7 @@ void TxGeneratorWindow::updateActiveList()
         }
     }
     ui->treeActive->blockSignals(false);
+    applyActiveFilter();
 }
 
 void TxGeneratorWindow::updateRowUI(int row)
@@ -863,6 +952,7 @@ void TxGeneratorWindow::updateRowUI(int row)
     item->setText(5, QString::number(cm.interval));
 
     ui->treeActive->blockSignals(false);
+    applyActiveFilter();
 }
 
 

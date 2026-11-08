@@ -3,6 +3,7 @@ SOURCES += \
     $$PWD/BitMatrixWidget.cpp
 
 HEADERS  += \
+    $$PWD/TxGeneratorListUtils.h \
     $$PWD/TxGeneratorWindow.h \
     $$PWD/BitMatrixWidget.h
 

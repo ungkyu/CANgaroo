@@ -312,3 +312,20 @@ Missing initialization access, XL configuration errors, and FD sample points tha
 - Test results: `build/tests/dbc-cycle-time-results.txt`. Application build log: `build/dbc-cycle-time-build.log`.
 - GUI interaction and hardware transmission timing require separate verification. Commit title: `feat: initialize Tx intervals from DBC cycle times`. Check Git for the actual commit ID and remote synchronization status.
 - Release compilation/linking completed: FEAT-002 is included in the standard `build/qt-mingw-release/bin/cangaroo.exe`.
+
+## 14. FEAT-003: Tx Generator search and duplicate removal (2026-11-08)
+
+- Added a search box above the transmission list. Search message names, hexadecimal/decimal CAN IDs, and interfaces without case sensitivity. All whitespace-separated terms must match, potentially across different columns.
+- Filtering affects visibility only: hidden messages continue transmitting. Reapply the filter after list rebuilds, additions, and row updates.
+- Hidden rows are deselected and a hidden current item is cleared. Select All selects visible rows only, preventing hidden rows from remaining targets for bulk transmission, edits, or removal.
+- Reapply the existing Available Messages search after refreshing the left-hand DBC list, and clear hidden selections there as well.
+- The Remove Duplicates button examines the entire transmission list, including filtered-out rows.
+- Duplicate identity: **same interface + CAN ID + Standard/Extended + Classic/FD + BRS + RTR + payload (including length) + interval**. Preserve different channels, data, or intervals even when the CAN ID matches.
+- Display names and RUN/STOP states are excluded from the key. Preserve the first registered row's configuration/state and remove later duplicates. Saved interface names distinguish unresolved interfaces.
+- The result dialog reports total rows removed and each removed row's original row number, name, CAN ID, interface, interval, payload, and whether it was transmitting. Show the first eight entries in the summary and the complete list under Details. Also report when no duplicates exist.
+- Refresh the send schedule after removal. Removed running rows stop generating future repetitions; frames already queued in the driver cannot be recalled.
+- Main files: `TxGeneratorWindow.cpp/.h/.ui/.pri`, `TxGeneratorListUtils.h`, `tests/tx_generator_list/`, `tests/tests.pro`.
+- TxGeneratorListTest: 4 passed / 0 failed, including initialization/cleanup. Covered whitespace/case/multi-term/ID searches and duplicate keys that preserve differences in interface, frame format, payload, and interval.
+- Test results: `build/tests/tx-generator-list-results.txt`. Application build log: `build/tx-generator-list-build.log`.
+- Manual GUI interaction and hardware transmission behavior remain unverified. Commit title: `feat: add Tx Generator search and duplicate removal`. Check Git for the actual commit ID and remote synchronization status.
+- Standard cangaroo.exe Release compilation/linking completed after retrying an initial output-file access denial.

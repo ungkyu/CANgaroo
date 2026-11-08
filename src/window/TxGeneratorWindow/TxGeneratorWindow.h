@@ -64,6 +64,8 @@ public slots:
 
 private slots:
     void on_lineEditSearchAvailable_textChanged(const QString &text);
+    void on_lineEditSearchActive_textChanged(const QString &text);
+    void on_btnRemoveDuplicates_released();
     void on_sliderLayoutZoom_valueChanged(int value);
     void on_cbLayoutCompact_toggled(bool checked);
     void on_btnAddToList_released();
@@ -116,6 +118,7 @@ private:
     bool isLoading;
     void updateAvailableList();
     void updateActiveList();
+    void applyActiveFilter();
     void updateRowUI(int row);
     void populateDbcMessages();
     // Matches each CyclicMessage::interfaceName against the combo box and

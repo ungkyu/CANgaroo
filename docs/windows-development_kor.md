@@ -323,3 +323,20 @@ windeployqt 실행 시 Direct3D 12 관련 `dxcompiler.dll`, `dxil.dll` 탐색 �
 - 테스트 결과: `build/tests/dbc-cycle-time-results.txt`. 앱 빌드 로그: `build/dbc-cycle-time-build.log`.
 - 실제 GUI 조작 및 CAN 장비 주기 송신 검증은 별도로 필요하다. 커밋 제목: `feat: initialize Tx intervals from DBC cycle times`. 실제 커밋 ID와 원격 동기화 상태는 Git에서 확인한다.
 - 앱 Release 컴파일/링크 완료: 기본 `build/qt-mingw-release/bin/cangaroo.exe`에 FEAT-002 반영.
+
+## 14. FEAT-003: Tx Generator 검색 및 중복 제거 (2026-11-08)
+
+- 송신 목록 상단에 검색창을 추가했다. 이름, 16진수/10진수 CAN ID, 인터페이스를 대소문자 구분 없이 검색한다. 공백으로 구분한 검색어는 모두 일치해야 한다(서로 다른 열에 있어도 가능).
+- 검색은 표시만 변경하며 숨겨진 메시지의 송신은 계속된다. 목록 추가/재구성 및 행 갱신 후에도 검색 조건을 유지한다.
+- 필터로 숨겨진 행은 선택 해제하고 숨겨진 현재 행도 해제한다. 전체 선택은 보이는 행만 선택하여 일괄 송신/수정/삭제 대상에 숨은 행이 남지 않도록 했다.
+- 기존 Available Messages(왼쪽 DBC 목록) 검색도 목록을 다시 채운 뒤 적용하며 숨은 선택을 해제한다.
+- `Remove Duplicates` 버튼은 필터와 관계없이 송신 목록 전체를 확인한다.
+- 중복 기준: **동일 인터페이스 + CAN ID + Standard/Extended + Classic/FD + BRS + RTR + payload(길이 포함) + interval**. 같은 ID여도 채널/데이터/주기가 다르면 유지한다.
+- 표시 이름과 RUN/STOP 상태는 중복 키에 포함하지 않는다. 첫 번째 등록 항목의 설정과 상태를 유지하고 이후 중복 행을 제거한다. 미연결 인터페이스는 저장된 이름도 구분한다.
+- 제거 결과 창에 총 제거 행 수와 각 행의 원래 행 번호, 메시지 이름, CAN ID, 인터페이스, interval, payload, 송신 중이었는지를 표시한다. 처음 8행을 요약하고 전체 목록은 Details에서 볼 수 있다. 중복이 없을 때도 결과를 알린다.
+- 제거 직후 송신 스케줄을 갱신한다. 송신 중인 중복 행을 제거하면 해당 행의 이후 반복 송신이 중단된다. 기존에 드라이버로 넘긴 프레임은 회수하지 않는다.
+- 주요 파일: `TxGeneratorWindow.cpp/.h/.ui/.pri`, `TxGeneratorListUtils.h`, `tests/tx_generator_list/`, `tests/tests.pro`.
+- TxGeneratorListTest: 4 passed / 0 failed (초기화/정리 포함). 공백/대소문자/여러 검색어/ID 검색과 인터페이스·프레임 형식·payload·주기가 다른 설정을 유지하는 중복 키를 검증했다.
+- 테스트 결과: `build/tests/tx-generator-list-results.txt`. 앱 빌드 로그: `build/tx-generator-list-build.log`.
+- GUI에서 실제 버튼 조작과 장비 송신 동작은 미검증. 커밋 제목: `feat: add Tx Generator search and duplicate removal`. 실제 커밋 ID와 원격 동기화 상태는 Git에서 확인한다.
+- 기본 `cangaroo.exe` Release 빌드/링크 완료. 최초 출력 파일 접근 거부 후 재시도하여 생성했다.

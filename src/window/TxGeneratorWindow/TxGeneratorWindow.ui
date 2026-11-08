@@ -263,6 +263,33 @@
       </property>
       <layout class="QVBoxLayout" name="verticalLayoutActive">
        <item>
+        <layout class="QHBoxLayout" name="horizontalLayoutActiveSearch">
+         <item>
+          <widget class="QLineEdit" name="lineEditSearchActive">
+           <property name="placeholderText">
+            <string>Filter by message name, CAN ID or interface...</string>
+           </property>
+           <property name="clearButtonEnabled">
+            <bool>true</bool>
+           </property>
+           <property name="toolTip">
+            <string>Filters the list only; hidden messages continue transmitting. Separate search terms with spaces.</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="btnRemoveDuplicates">
+           <property name="text">
+            <string>Remove Duplicates</string>
+           </property>
+           <property name="toolTip">
+            <string>Check the entire list, including hidden rows. Keep the first row with the same interface, CAN ID, frame format, payload and interval.</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item>
         <widget class="QTreeWidget" name="treeActive">
          <property name="editTriggers">
           <set>QAbstractItemView::NoEditTriggers</set>
