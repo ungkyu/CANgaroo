@@ -21,6 +21,9 @@
 
 #include "VectorDriver.h"
 #include "VectorInterface.h"
+#ifdef Q_OS_WIN
+#include "qtvectorcan/vectorcanbackend.h"
+#endif
 #include "core/Backend.h"
 #include "driver/GenericCanSetupPage.h"
 
@@ -47,13 +50,16 @@ bool VectorDriver::update()
 {
     deleteAllInterfaces();
 
-    if (!QCanBus::instance()->plugins().contains(QStringLiteral("vectorcan"))) {
-        return true;
-    }
+#ifndef Q_OS_WIN
+    return true; // Vector XL API is Windows-only.
+#else
 
     QString errorString;
+    if (!CangarooVectorCanBackend::canCreate(&errorString)) {
+        return true;
+    }
     const QList<QCanBusDeviceInfo> devices =
-        QCanBus::instance()->availableDevices(QStringLiteral("vectorcan"), &errorString);
+        CangarooVectorCanBackend::interfaces();
 
     if (!errorString.isEmpty()) {
         log_error(QString("VectorDriver: failed to enumerate devices: %1").arg(errorString));
@@ -66,6 +72,7 @@ bool VectorDriver::update()
     }
 
     return true;
+#endif
 }
 
 VectorInterface *VectorDriver::createOrUpdateInterface(QString deviceName, QString description)

@@ -70,6 +70,8 @@ private:
     QCanBusDevice    *_device;
     unsigned          _bitrate;
     unsigned          _fdBitrate;
+    unsigned          _samplePoint = 875;
+    unsigned          _fdSamplePoint = 800;
     bool              _listenOnly;
     bool              _isCanFD;
     std::atomic<bool> _isOpen{false};

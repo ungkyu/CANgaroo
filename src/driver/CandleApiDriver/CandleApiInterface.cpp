@@ -325,6 +325,29 @@ uint32_t CandleApiInterface::getCapabilities()
     }
 }
 
+void CandleApiInterface::add80PercentTimings(const candle_capability_t &caps)
+{
+    // Add only realizable 80% nominal timings, using the device's own limits.
+    // Keep the computed entries in the same table used by setBitTiming().
+    const auto existingTimings = _timings;
+    for (const auto &t : existingTimings) {
+        if (t.getBaseClk() != caps.fclk_can)
+            continue;
+        const bool alreadyPresent = std::any_of(_timings.cbegin(), _timings.cend(),
+            [&t](const CandleApiTiming &candidate) {
+                return candidate.getBaseClk() == t.getBaseClk()
+                    && candidate.getBitrate() == t.getBitrate()
+                    && candidate.getSamplePoint() == 800;
+            });
+        candle_bittiming_t timing;
+        if (!alreadyPresent && CandleApiTiming::with80Percent(caps, t.getTiming(), timing)) {
+            _timings << CandleApiTiming(caps.fclk_can, t.getBitrate(), 800,
+                                       timing.brp, timing.phase_seg1, timing.phase_seg2);
+        }
+    }
+
+}
+
 QList<CanTiming> CandleApiInterface::getAvailableBitrates()
 {
     QList<CanTiming> retval;
@@ -336,6 +359,8 @@ QList<CanTiming> CandleApiInterface::getAvailableBitrates()
     }
 
     const bool isFdCapable = (caps.feature & CANDLE_FEATURE_FD) != 0;
+
+    add80PercentTimings(caps);
 
     int i = 0;
     if (isFdCapable) {
@@ -371,6 +396,8 @@ bool CandleApiInterface::setBitTiming(uint32_t bitrate, uint32_t samplePoint)
     if (!candle_channel_get_capabilities(_sharedDev->handle, _channel, &caps)) {
         return false;
     }
+
+    add80PercentTimings(caps);
 
     for (const auto &t : _timings) {
         if ( (t.getBaseClk() == caps.fclk_can)

@@ -98,6 +98,7 @@ private:
     QList<CandleApiTiming> _fdTimings;
 
     bool setBitTiming(uint32_t bitrate, uint32_t samplePoint);
+    void add80PercentTimings(const candle_capability_t &caps);
     bool setDataBitTiming(uint32_t bitrate, uint32_t samplePoint);
 
     // Frames handed to the device, waiting for the echo that confirms they were

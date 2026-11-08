@@ -20,6 +20,11 @@ public:
     uint32_t getSamplePoint() const;
     candle_bittiming_t getTiming() const;
 
+    // Preserve the existing bit period while finding an exact 80% sample point.
+    static bool with80Percent(const candle_capability_t &caps,
+                              const candle_bittiming_t &original,
+                              candle_bittiming_t &result);
+
 private:
     uint32_t _baseClk;
     uint32_t _bitrate;

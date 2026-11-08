@@ -21,6 +21,9 @@
 
 #include "VectorInterface.h"
 #include "VectorDriver.h"
+#ifdef Q_OS_WIN
+#include "qtvectorcan/vectorcanbackend.h"
+#endif
 
 #include <chrono>
 
@@ -75,12 +78,17 @@ QList<CanTiming> VectorInterface::getAvailableBitrates()
 
     unsigned i = 0;
     for (unsigned br : nominalRates) {
-        // Classic CAN entry
-        retval << CanTiming(i++, br, 0, 875);
-        // CAN FD entries: pair with each data rate that is >= nominal rate
-        for (unsigned fdbr : fdDataRates) {
-            if (fdbr >= br) {
-                retval << CanTiming(i++, br, fdbr, 875, 800);
+        for (unsigned sp : {800u, 875u}) {
+            // Classic CAN entry
+            retval << CanTiming(i++, br, 0, sp, 0);
+            // CAN FD entries: pair with each data rate that is >= nominal rate.
+            for (unsigned fdbr : fdDataRates) {
+                if (fdbr >= br) {
+                    // With the 80 MHz timing clock, 5/10 Mbps have 16/8 TQ.
+                    // 80% is inexact there; expose the exact 87.5% alternative.
+                    const unsigned dataSp = (fdbr == 5000000 || fdbr == 10000000) ? 875 : 800;
+                    retval << CanTiming(i++, br, fdbr, sp, dataSp);
+                }
             }
         }
     }
@@ -98,6 +106,8 @@ void VectorInterface::applyConfig(const MeasurementInterface &mi)
     _listenOnly = mi.isListenOnlyMode();
     _isCanFD    = mi.isCanFD();
     _fdBitrate  = mi.fdBitrate();
+    _samplePoint = mi.samplePoint();
+    _fdSamplePoint = mi.fdSamplePoint();
     log_info(QString("VectorInterface %1: configuration stored, bitrate=%2, canfd=%3, fdBitrate=%4")
                  .arg(_name).arg(_bitrate).arg(_isCanFD).arg(_fdBitrate));
 }
@@ -115,9 +125,13 @@ uint32_t VectorInterface::getCapabilities()
 
 void VectorInterface::open()
 {
+#ifdef Q_OS_WIN
     QString errorString;
-    _device = QCanBus::instance()->createDevice(
-        QStringLiteral("vectorcan"), _deviceName, &errorString);
+    if (!CangarooVectorCanBackend::canCreate(&errorString)) {
+        log_error(QString("VectorInterface %1: XL library unavailable: %2").arg(_name, errorString));
+        return;
+    }
+    _device = new CangarooVectorCanBackend(_deviceName);
 
     if (!_device) {
         log_error(QString("VectorInterface %1: createDevice failed: %2")
@@ -126,10 +140,20 @@ void VectorInterface::open()
     }
 
     _device->setConfigurationParameter(QCanBusDevice::BitRateKey, _bitrate);
+    _device->setConfigurationParameter(CangarooVectorCanBackend::NominalSamplePointKey, _samplePoint);
 
     if (_isCanFD) {
         _device->setConfigurationParameter(QCanBusDevice::CanFdKey, true);
         _device->setConfigurationParameter(QCanBusDevice::DataBitRateKey, _fdBitrate);
+        _device->setConfigurationParameter(CangarooVectorCanBackend::DataSamplePointKey, _fdSamplePoint);
+    }
+
+    if (_device->error() != QCanBusDevice::NoError) {
+        log_error(QString("VectorInterface %1: configuration rejected: %2")
+                      .arg(_name, _device->errorString()));
+        delete _device;
+        _device = nullptr;
+        return;
     }
 
     if (_listenOnly) {
@@ -151,6 +175,9 @@ void VectorInterface::open()
         std::chrono::system_clock::now().time_since_epoch()).count();
     _isOpen.store(true);
     log_info(QString("VectorInterface %1: opened").arg(_name));
+#else
+    log_error("Vector XL API is supported only on Windows.");
+#endif
 }
 
 bool VectorInterface::isOpen()

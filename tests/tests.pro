@@ -19,3 +19,6 @@ SUBDIRS += \
     slcan_codec \
     ulc_codec \
     measurement_setup
+
+win32: SUBDIRS += candle_timing
+SUBDIRS += vector_timing

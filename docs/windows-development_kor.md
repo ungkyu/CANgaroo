@@ -5,14 +5,15 @@
 - 최초 작성: 2026-11-08
 - 마지막 갱신: 2026-11-08
 - 작업 저장소: `E:\MyWorkspaces\CANgaroo`
-- 기준 브랜치: `build/qt-20261108` (`master`에서 생성)
+- 현재 브랜치: `develop` (최초 작업 브랜치 `build/qt-20261108`은 `master`에서 생성)
 - 빌드 대상: Windows x64 / Qt 6.12.0 / MinGW / Release
+- 언어: 한국어 | [English](windows-development_eng.md)
 
 ## 1. 현재 상태
 
 | 항목 | 상태 | 근거 및 범위 |
 | --- | --- | --- |
-| 작업 브랜치 생성 | 완료 | `build/qt-20261108` 생성 및 전환 |
+| 작업 브랜치 및 원격 등록 | 완료 | `develop` 생성, `origin/develop` 추적 및 초기 환경 커밋 푸시 완료 |
 | Qt Serial Port / Serial Bus | 완료 | 사용자 설치 후 두 모듈 파일 확인 |
 | pybind11 설치 | 완료 | 프로젝트 `.deps/python`에 3.1.0 설치, MinGW Python에서 import 확인 |
 | Python 개발 파일 연결 | 완료 | Qt 도구에 포함된 Python 3.9 헤더와 import library 사용 |
@@ -22,9 +23,10 @@
 | 화면 표시 및 정상 종료 | 미검증 | GUI를 직접 조작해 확인하지 않음 |
 | Python 스크립트 기능 | 미검증 | 앱 내부에서 스크립트 실행 확인 필요 |
 | CAN / LIN 하드웨어 통신 | 미검증 | 실제 장비를 연결한 송수신 검증 필요 |
-| 단위 테스트 | 미실행 | 이번 작업은 앱 빌드 확인 범위 |
+| 기능 단위 / 모의 API 테스트 | 통과 | CandleTimingTest 4/4, VectorTimingTest 9/9 (초기화/정리 포함); 전체 기존 테스트는 미실행 |
+| Vector / Candlelight 80% | 구현 완료 | nominal sample point 선택 및 실제 설정 경로 구현; 실장비 검증 대기 |
 
-컴파일 성공과 기능 검증 완료는 별도로 기록한다. 앞선 실행 확인 중 첫 프로세스는 이후 조회되지 않았으며, 종료 원인은 확정하지 못했다. 후속 확인의 프로세스 응답만으로 정상 GUI 구동을 단정하지 않는다.
+컴파일 성공과 기능 검증 완료는 별도로 기록한다. 최초 테스트 프로세스가 일반 조회에서 보이지 않아 종료된 것으로 추정했으나, 이후 권한이 있는 조회에서 숨김 테스트 프로세스가 남아 있음을 확인하고 종료했다. 프로세스 응답만으로 정상 GUI 구동을 단정하지 않는다. 사용자는 기존 EXE 종료를 알렸으며, 이후 기본 이름으로 재빌드를 완료했다.
 
 ## 2. 설치 환경과 경로
 
@@ -50,14 +52,14 @@ Qt 모듈은 Core, Gui, Widgets, Xml, Charts, Svg, SerialPort, SerialBus, Networ
 | 문제 | 적용한 조치 | 남은 사항 |
 | --- | --- | --- |
 | Qt Serial Port / Serial Bus 누락 | 사용자가 Qt 모듈 추가 설치 | Qt 업데이트 후 재확인 |
-| pybind11 누락 | pip `--target`으로 저장소의 무시된 build 폴더에 설치 | 다른 PC에서 다시 설치 필요 |
+| pybind11 누락 | pip `--target`으로 최초 build 폴더에 설치한 뒤 `.deps/python/`으로 이동 | 다른 PC에서 다시 설치 필요 |
 | `python3-embed development package not found` | 로컬 qmake 인자로 pkg-config 연동을 해제하고 Python include / library 직접 지정 | 범용 Windows 빌드 설정은 추후 정리 가능 |
 | qmake의 Python include 자동 탐지에서 `SyntaxError` | pybind11 include 경로를 qmake 인자로 직접 추가 | 원래 탐지 구문은 수정하지 않아 메시지가 남을 수 있음 |
 | Cygwin sh / test 선택으로 빌드 실패 | 빌드 프로세스의 PATH를 Qt, MinGW, Windows 경로로 제한 | 시스템 PATH 자체는 변경하지 않음 |
 | Candle 드라이버 `_snwprintf` 컴파일 오류 | `DEFINES+=STRSAFE_NO_DEPRECATE` 적용 | 기존 API 허용을 위한 호환성 옵션이며 소스 개선은 별도 검토 |
 | EXE 폴더에 런타임 DLL 누락 | windeployqt 및 Python 런타임 복사 | 깨끗한 Windows 환경에서 실행 검증 필요 |
 
-기존 앱 소스 및 `.pro` 파일은 수정하지 않았다. 빌드 설정은 로컬 명령과 스크립트로 적용했다.
+초기 환경 구성 단계에서는 앱 소스 및 `.pro` 파일을 수정하지 않았다. 이후 FEAT-001 구현에서 Vector/Candlelight 소스, Vector qmake 구성 및 테스트 프로젝트를 수정했다.
 
 ## 4. 재현 절차
 
@@ -72,12 +74,12 @@ git status --short --branch
 Get-ChildItem E:\Qt\6.12.0\mingw_64\modules -Filter '*Serial*'
 ```
 
-현재 브랜치가 이미 있으므로 같은 이름으로 다시 생성하지 않는다. 새 기능 작업은 별도 브랜치에서 진행하고 아래 기능 이력에 기록한다.
+현재 개발 브랜치는 `develop`이며 앞으로 기능 추가도 이 브랜치에 반영할 예정이다. 기능별 작업과 검증 근거를 아래 이력에 기록한다.
 
 ### 4.2 pybind11 설치
 
 ```powershell
-& 'C:\Users\hanun\AppData\Local\Programs\Python\Python315\python.exe' -m pip install --target E:\MyWorkspaces\CANgaroo\.deps\python pybind11==3.1.0
+.\scripts\windows\install-deps.ps1 -PythonExe 'C:\Users\hanun\AppData\Local\Programs\Python\Python315\python.exe'
 ```
 
 MinGW에 포함된 Python에는 pip가 없어서 별도 Python의 pip로 헤더 패키지를 설치했다. 재설치 시 기존 대상 폴더 상태를 확인한다.
@@ -90,7 +92,7 @@ MinGW에 포함된 Python에는 pip가 없어서 별도 Python의 pip로 헤더 
 & E:\MyWorkspaces\CANgaroo\scripts\windows\build-qt.ps1
 ```
 
-스크립트는 `scripts/windows/`에 두어 Git으로 관리한다(현재 커밋 전). 의존성은 `.deps/python/`, 결과물은 `build/`에 분리한다. 두 경로 모두 Git에서 제외하며, build 폴더만 삭제할 때는 의존성이 유지된다. 새 clone이나 .deps 삭제 후에는 4.2절의 설치가 필요하다. 스크립트는 빌드 디렉터리를 자동 생성한다. 아래 명령으로도 동일한 설정을 재현할 수 있다.
+스크립트는 `scripts/windows/`에 두어 Git으로 관리한다(초기 환경 커밋 `04d5b59`에 포함). 의존성은 `.deps/python/`, 결과물은 `build/`에 분리한다. 두 경로 모두 Git에서 제외하며, build 폴더만 삭제할 때는 의존성이 유지된다. 새 clone이나 .deps 삭제 후에는 4.2절의 설치가 필요하다. 스크립트는 빌드 디렉터리를 자동 생성한다. 아래 명령으로도 동일한 설정을 재현할 수 있다.
 
 ```powershell
 $env:PATH = 'E:\Qt\6.12.0\mingw_64\bin;E:\Qt\Tools\mingw1310_64\bin;E:\Qt\Tools\mingw1310_64\opt\bin;C:\Windows\System32;C:\Windows'
@@ -141,6 +143,10 @@ windeployqt 실행 시 Direct3D 12 관련 `dxcompiler.dll`, `dxil.dll` 탐색 �
 | 호환성 옵션 적용 후 빌드 로그 | `build/rebuild.log` |
 | 실행 확인 stderr | `build/startup-error.log` |
 | 실행 확인 stdout | `build/startup-output.log` |
+| 80% 기능 최종 빌드 로그 | `build/sample-point-final-build.log` |
+| 기본 EXE 재빌드 로그 | `build/sample-point-standard-build.log` |
+| Candle 테스트 결과 | `build/tests/candle-timing-results.txt` |
+| Vector 테스트 결과 | `build/tests/vector-timing-results.txt` |
 
 로그는 로컬 참고 자료이며 다음 실행에서 덮어쓸 수 있다. 중요한 실패나 배포 검증 결과는 아래 이력에 요약해 남긴다.
 
@@ -151,8 +157,10 @@ windeployqt 실행 시 Direct3D 12 관련 `dxcompiler.dll`, `dxil.dll` 탐색 �
 - [ ] 가상 CAN 또는 실제 어댑터를 이용한 송수신 및 로깅 확인
 - [ ] DBC / LDF 로딩과 Trace / Graph 기본 동작 확인
 - [ ] Qt가 설치되지 않은 Windows PC에서 `bin` 폴더 실행 확인
-- [ ] Windows 단위 테스트 빌드 및 실행 절차 확립
-- [ ] 현재 PC에 고정된 경로를 매개변수로 받도록 빌드 스크립트 개선 및 배포 자동화 검토
+- [x] 새 Candle / Vector 기능 테스트 개별 빌드 및 실행
+- [ ] Windows 전체 기존 단위 테스트 실행
+- [x] 빌드 스크립트에 저장소 자동 탐지와 Qt/MinGW 경로 및 Jobs 매개변수 추가
+- [ ] Python 3.9 고정 경로 일반화 및 배포 자동화 검토
 - [ ] Windows Python 자동 탐지와 pkg-config 의존 방식 개선 검토
 - [ ] Candle 드라이버의 deprecated 함수 교체 검토
 
@@ -165,6 +173,7 @@ windeployqt 실행 시 Direct3D 12 관련 `dxcompiler.dll`, `dxil.dll` 탐색 �
 | ID | 기능 / 작업 | 상태 | 브랜치 | 검증 결과 | 상세 기록 |
 | --- | --- | --- | --- | --- | --- |
 | ENV-001 | Windows Qt 빌드 환경 구성 | 빌드 완료 / 기능 검증 대기 | `build/qt-20261108` | Release 링크 성공, 실행 프로세스 부분 확인 | 본 문서 1~5절 |
+| FEAT-001 | Vector / Candlelight nominal sample point 80% | 구현 / 장비 검증 대기 | `develop` | 계산 및 모의 XL API 테스트, Release 빌드 | [상세 기록](can-sample-point.md) |
 
 상태 예시: 계획, 진행 중, 검증 대기, 완료, 보류. 기능 완료 시 관련 검증 근거를 기록한다.
 
@@ -243,3 +252,60 @@ windeployqt 실행 시 Direct3D 12 관련 `dxcompiler.dll`, `dxil.dll` 탐색 �
 ```
 
 설치 스크립트의 `--upgrade`는 버전 고정 파일에 명시된 버전으로 설치 디렉터리를 갱신한다. 패키지 삭제/추가 시에는 버전 고정 파일과 본 문서의 환경 및 변경 이력을 함께 갱신한다.
+
+## 12. Git 상태 및 80% 기능 진행 내역
+
+### 12.1 저장소와 커밋
+
+- 원격 `origin` (fetch/push): `git@github.com:ungkyu/CANgaroo.git`
+- GitHub: https://github.com/ungkyu/CANgaroo
+- 현재 브랜치 / upstream: `develop` / `origin/develop`
+- 초기 환경 커밋: `04d5b59` — `build: add Windows Qt build scripts and dependency setup`
+- 위 커밋에 `.gitignore`, 최초 한국어 문서, 빌드/설치 스크립트, requirements 파일을 포함하여 푸시했다.
+- 작성자 정보는 이 저장소 로컬 설정에 적용했다: `ungkyu.han <hanungkyu@gmail.com>`.
+- 후속 변경 묶음: 80% 기능, 테스트 및 한·영 문서 분리. 커밋 제목: `feat: add 80% CAN sample point support and bilingual docs`. 실제 커밋 ID와 원격 동기화 상태는 Git에서 확인한다.
+- 기존 문서 `windows-development.md`는 `windows-development_kor.md`로 이름을 변경했다. 영어본은 `windows-development_eng.md`이다. 두 문서는 함께 갱신한다.
+
+### 12.2 FEAT-001: nominal sample point 80%
+
+- Vector: nominal 목록에 80.0% 추가. Qt v6.12.0 백엔드를 앱 내부에 포함하여 확장했다. 설치된 Qt 플러그인은 그대로 유지한다.
+- Classic CAN은 `xlCanSetChannelParams`, CAN FD는 `xlCanFdSetConfiguration`으로 선택한 타이밍을 채널 활성화 전에 전달한다. 이후 bitrate 재적용으로 sample point를 덮어쓰지 않는다.
+- 초기화 권한 부족, XL API 오류, 정확하게 표현할 수 없는 FD 타이밍은 연결 실패로 처리한다.
+- Vector FD data 5/10 Mbps는 80 MHz 기준 16/8 TQ여서 정확한 80%가 불가능하므로 87.5%를 표시한다. 예전 설정에서 해당 data 조합을 80%로 저장했다면 다시 선택해야 한다.
+- FD nominal 800 kbps / 87.5%처럼 기존 목록에 있어도 정수 TQ로 표현할 수 없는 조합은 오류로 처리한다.
+- Candlelight / gs_usb: 장치 capability의 BRP 범위·증가 단위, TSEG1/TSEG2 제한에 맞춰 기존 bit period를 유지하는 정확한 80% nominal 타이밍만 추가한다.
+- 저장 설정을 GUI 없이 적용할 때도 Candle 타이밍을 계산한다. Candle FD data 테이블은 변경하지 않았다.
+- 170 MHz / 500 kbps와 48 MHz / 800 kbps는 80% 계산이 가능하다. 48 MHz / 500 kbps는 96 clock cycles라 정확한 80%를 만들 수 없어 표시하지 않는다.
+- 상세 구현 및 장비 검증 체크리스트: [80% 기능 기록](can-sample-point.md).
+
+### 12.3 변경 파일 그룹
+
+| 그룹 | 주요 경로 | 역할 |
+| --- | --- | --- |
+| 초기 환경 (커밋 완료) | `.gitignore`, `scripts/windows/*.ps1`, `scripts/windows/requirements.txt` | 의존성 분리, 버전 고정, 설치 및 빌드 |
+| Candlelight | `src/driver/CandleApiDriver/CandleApiInterface.*`, `CandleApiTiming.*` | 장치 제한을 반영한 80% 계산, 목록 및 실제 적용 |
+| Vector | `src/driver/VectorDriver/VectorInterface.*`, `VectorDriver.cpp`, `VectorDriver.pri`, `VectorTiming.h` | UI 선택값 전달, 백엔드 통합, 정수 TQ 계산 |
+| Qt 기반 Vector 백엔드 | `src/driver/VectorDriver/qtvectorcan/` | XL 설정 확장; 원본 출처·변경 내역·라이선스는 해당 README에 기록 |
+| 테스트 | `tests/candle_timing/`, `tests/vector_timing/`, `tests/tests.pro` | 계산 및 모의 XL API 검증; Candle 테스트는 Windows에서 등록 |
+| 문서 | `docs/windows-development_kor.md`, `docs/windows-development_eng.md`, `docs/can-sample-point.md` | 진행 현황, 재현 절차, 기능 상세 기록 |
+
+### 12.4 검증과 결과물
+
+- CandleTimingTest: 4 passed / 0 failed. VectorTimingTest: 9 passed / 0 failed. 합계에는 Qt Test 초기화/정리 항목도 포함된다.
+- Vector 테스트는 모의 XL API를 사용한다. 설정 전달, 권한 부족 및 API 오류 시 활성화 방지, 타이밍 덮어쓰기 방지, FD 정수 TQ와 segment 범위를 확인했다.
+- 테스트 실행 파일: `build/tests/candle_timing_test.exe`, `build/tests/vector_timing_test.exe`.
+- 새 테스트는 각 `tests/<name>/<name>.pro`를 qmake와 mingw32-make로 빌드했다. 실행 시 Qt/MinGW의 bin을 PATH에 포함한다.
+- 기존 `cangaroo.exe`가 실행 중이어서 임시로 `cangaroo-samplepoint80.exe`를 생성했다.
+- 사용자 앱 종료 및 남아 있던 숨김 테스트 프로세스 종료 후 `scripts/windows/build-qt.ps1`로 기본 `cangaroo.exe`의 컴파일/링크를 완료했다.
+- 최신 기본 EXE: `build/qt-mingw-release/bin/cangaroo.exe` (2026-11-08 18:30 KST 빌드 확인).
+- 실제 GUI에서 새 항목 선택·설정 저장/복원 및 Vector/Candlelight 장비 송수신은 아직 검증하지 않았다.
+
+### 12.5 추가 이력
+
+| 날짜 | ID | 변경 내용 | 상태 |
+| --- | --- | --- | --- |
+| 2026-11-08 | ENV-002 | pybind11을 `.deps/python/`으로 분리, 버전 고정 및 설치 스크립트 추가 | 초기 환경 커밋에 포함 |
+| 2026-11-08 | GIT-001 | `develop` 생성, 작성자 로컬 설정, `04d5b59` 커밋 및 원격 푸시 | 완료 |
+| 2026-11-08 | FEAT-001 | Vector / Candlelight nominal 80% 구현, 테스트 추가 | 빌드·테스트 완료, 장비 검증 대기 |
+| 2026-11-08 | BUILD-002 | 임시 EXE 생성 후 기본 `cangaroo.exe`로 재빌드 | 완료 |
+| 2026-11-08 | DOC-002 | 한국어 문서 이름에 `_kor` 추가, 누락 내역 보완, `_eng` 영어본 생성 | 기능 변경과 함께 Git 관리 |
