@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Fork changes (2026-11-08): Windows build or CAN/Tx Generator test integration.
+# See docs/windows-development_eng.md for the change record.
 param([string]$PythonExe = 'python')
 $ErrorActionPreference = 'Stop'
 $repoDir = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path

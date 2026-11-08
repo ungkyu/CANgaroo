@@ -1,3 +1,5 @@
+// Fork changes (2026-11-08): Windows build / CAN timing / Tx Generator development.
+// See docs/windows-development_eng.md for the change record.
 #ifndef CANDLEAPITIMING_H
 #define CANDLEAPITIMING_H
 

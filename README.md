@@ -198,6 +198,22 @@ Further development by:
 * Wikilift (https://github.com/wikilift/CANgaroo)
 * Jayachandran Dharuman (https://github.com/OpenAutoDiagLabs/cangaroo)
 
+## Fork licensing and source publication
+
+This fork publishes modified source code, tests, scripts and documentation only;
+it does not publish its own EXEs, installers, runtime DLL bundles or vendor SDKs.
+The upstream release link above refers to the upstream project.
+
+Original author credits, root LICENSE and file-specific notices are preserved.
+New fork application/test/build code is GPL-2.0-or-later where indicated. Qt and
+other third-party components retain their own licenses. In particular, the
+open-source Qt Charts configuration requires GPLv3-compatible licensing; do not
+describe the combined application as GPLv2-only.
+
+See [한국어 라이선스 정책](docs/licensing_kor.md),
+[English licensing policy](docs/licensing_eng.md), and
+[third-party notices](THIRD_PARTY_NOTICES.md).
+
 ## DISCLAIMER
 
 This software is provided "as is", without warranty of any kind, express or implied, including but not limited to the warranties of merchantability, fitness for a particular purpose, and non-infringement. In no event shall the authors, maintainers, contributors, or copyright holders be liable for any claim, damages, or other liability, whether in an action of contract, tort, or otherwise, arising from, out of, or in connection with the software or the use or other dealings in the software.

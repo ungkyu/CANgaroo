@@ -1,3 +1,5 @@
+// Fork changes (2026-11-08): Windows build / CAN timing / Tx Generator development.
+// See docs/windows-development_eng.md for the change record.
 /*
 
   Copyright (c) 2026 Jayachandran Dharuman
@@ -68,6 +70,7 @@ public slots:
 
 private slots:
     void on_lineEditSearchAvailable_textChanged(const QString &text);
+    void on_tabWidgetAvailable_currentChanged(int index);
     void on_lineEditSearchActive_textChanged(const QString &text);
     void on_btnRemoveDuplicates_released();
     void on_btnLiveEdit_released();

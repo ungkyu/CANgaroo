@@ -360,3 +360,30 @@ Missing initialization access, XL configuration errors, and FD sample points tha
 - Standard `build/qt-mingw-release/bin/cangaroo.exe` Release compilation/linking completed.
 - Multi-dialog GUI interaction, editing/removing rows, and physical cyclic transmission have not yet been verified.
 - Commit title: `feat: add separate live editors for Tx Generator messages`. Check Git for the actual commit ID and remote synchronization status.
+
+## 16. FEAT-005: Signal List tab in Available Messages (2026-11-08)
+
+- Tab order: **Message List → Signal List → Layout View**. Preserve existing message search and layout functionality.
+- List signals from the DBCs associated with the currently selected interface. Columns: Signal, Message, CAN ID, and DBC.
+- Search a signal name to identify its owning CAN message name and ID. Also support message names, hexadecimal/decimal IDs, and DBC names. Searches are case-insensitive and require all whitespace-separated terms to match.
+- Select signals and click the existing **Add DBC Message** button, or double-click a signal row, to add the owning CAN message to the right-hand transmission list.
+- Allow multi-selection. When multiple selected signals belong to one message, add that message only once per operation. Keep definitions from different DBCs distinct.
+- Repeatedly adding a message already in the transmission list remains allowed, matching existing behavior; use Remove Duplicates when required.
+- New messages retain existing DBC GenMsgCycleTime/default handling, falling back to zero when unspecified. Adding messages never starts transmission.
+- Switching tabs updates the Add button based on that tab's selection. Filtering clears hidden selections/current rows; interface/DBC list refreshes preserve search text.
+- Main files: `TxSignalListWidget.h/.cpp`, `TxGeneratorWindow.h/.cpp/.ui/.pri`, `tests/tx_signal_list/`, `tests/tests.pro`.
+- TxSignalListTest: 5 passed / 0 failed, including initialization/cleanup. Qt offscreen widget tests cover owning-message lookup, identically named signals in distinct messages, deduplicated parent selection, filter persistence/selection cleanup, extended-ID display, and double-click addition requests.
+- Test results: `build/tests/tx-signal-list-results.txt`. Application build log: `build/tx-signal-list-build.log`.
+- The offscreen platform reported font/size-hint warnings, but all tests passed. Full-application manual GUI and hardware transmission checks remain separate work.
+- Commit title: `feat: add signal lookup and source licensing notices`. Check Git for the actual commit ID and remote synchronization status.
+- Standard cangaroo.exe Release compilation/linking completed. Block selection signals while replacing DBC lists to avoid previewing stale selections.
+
+## 17. Source-publication licensing notices (2026-11-08)
+
+- Maintainer policy: publish this fork's source, tests, scripts and documentation only; no planned EXE/DLL/SDK distribution.
+- Preserve original LICENSE, copyright and component-specific SPDX alternatives; no blanket root-license replacement.
+- Add GPL-2.0-or-later identifiers to new application/test/build code, and dated change notices to modified files.
+- Correct the Vector README's GPLv2-only selection; select Qt's offered GPLv3 alternative for the combined open-source Qt Charts configuration.
+- Add GPLv2/GPLv3/LGPLv3 texts under LICENSES, THIRD_PARTY_NOTICES.md, docs/licensing_kor.md, docs/licensing_eng.md, and README guidance.
+- Do not claim that proprietary driver combinations or all firmware have passed a complete rights audit; see licensing documents for scope and unresolved items.
+- No behavioral changes: notices, comments and documentation only. Group these notices with Signal List under `feat: add signal lookup and source licensing notices`. Check Git for the actual commit ID and remote synchronization status.

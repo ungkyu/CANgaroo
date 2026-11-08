@@ -1,3 +1,5 @@
+// Fork changes (2026-11-08): application-local Vector timing integration.
+// Original copyright and SPDX alternatives retained; see README.md.
 // Copyright (C) 2017 Denis Shienkov <denis.shienkov@gmail.com>
 // SPDX-License-Identifier: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
 // Qt-Security score:significant reason:default

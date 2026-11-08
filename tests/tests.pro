@@ -1,3 +1,5 @@
+# Fork changes (2026-11-08): Windows build or CAN/Tx Generator test integration.
+# See docs/windows-development_eng.md for the change record.
 TEMPLATE = subdirs
 
 # Unit tests. Build and run everything with:
@@ -24,3 +26,4 @@ win32: SUBDIRS += candle_timing
 SUBDIRS += vector_timing
 SUBDIRS += tx_generator_list
 SUBDIRS += tx_live_edit
+SUBDIRS += tx_signal_list

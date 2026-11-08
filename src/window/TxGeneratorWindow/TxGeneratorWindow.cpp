@@ -1,3 +1,5 @@
+// Fork changes (2026-11-08): Windows build / CAN timing / Tx Generator development.
+// See docs/windows-development_eng.md for the change record.
 /*
   Copyright (c) 2026 Schildkroet
 
@@ -36,6 +38,7 @@
 #include <QComboBox>
 #include <QMessageBox>
 #include <QSet>
+#include <QSignalBlocker>
 #include "core/Backend.h"
 #include "core/MeasurementNetwork.h"
 #include "core/MeasurementSetup.h"
@@ -51,6 +54,10 @@ TxGeneratorWindow::TxGeneratorWindow(QWidget *parent, Backend &backend) :
     _backend(backend)
 {
     ui->setupUi(this);
+    connect(ui->signalList, &TxSignalListWidget::selectionChanged,
+            this, &TxGeneratorWindow::on_treeAvailable_itemSelectionChanged);
+    connect(ui->signalList, &TxSignalListWidget::messageActivated,
+            this, &TxGeneratorWindow::on_btnAddToList_released);
 
     // Allow tree widgets to be compressed to near-zero so the window can be
     // made as short as the user wants (otherwise QTreeWidget's inherent
@@ -309,7 +316,11 @@ void TxGeneratorWindow::refreshInterfaces()
 
 void TxGeneratorWindow::populateDbcMessages()
 {
+    // Replace both lists together before previewing selections from a new DBC.
+    const QSignalBlocker messageSignals(ui->treeAvailable);
+    const QSignalBlocker signalSignals(ui->signalList);
     ui->treeAvailable->clear();
+    QList<TxSignalMessageEntry> signalMessages;
 
     BusInterfaceId currentId = static_cast<BusInterfaceId>(ui->comboBoxInterface->currentData().toUInt());
     MeasurementSetup &setup = _backend.getSetup();
@@ -333,6 +344,7 @@ void TxGeneratorWindow::populateDbcMessages()
                     for (auto it = msgs.begin(); it != msgs.end(); ++it) {
                         CanDbMessage *dbMsg = *it;
                         if (dbMsg) {
+                            signalMessages.append({dbMsg, db->getFileName()});
                             QTreeWidgetItem *item = new QTreeWidgetItem(ui->treeAvailable);
                             item->setText(0, "0x" + QString("%1").arg(dbMsg->getRaw_id(), 3, 16, QChar('0')).toUpper());
                             item->setText(1, dbMsg->getName());
@@ -344,6 +356,13 @@ void TxGeneratorWindow::populateDbcMessages()
         }
     }
     on_lineEditSearchAvailable_textChanged(ui->lineEditSearchAvailable->text());
+    ui->signalList->setMessages(signalMessages);
+    on_treeAvailable_itemSelectionChanged();
+}
+
+void TxGeneratorWindow::on_tabWidgetAvailable_currentChanged(int)
+{
+    on_treeAvailable_itemSelectionChanged();
 }
 
 void TxGeneratorWindow::on_lineEditSearchAvailable_textChanged(const QString &text)
@@ -518,6 +537,12 @@ void TxGeneratorWindow::on_btnRemoveDuplicates_released()
 
 void TxGeneratorWindow::on_treeAvailable_itemSelectionChanged()
 {
+    if (ui->tabWidgetAvailable->currentWidget() == ui->tabSignalList) {
+        ui->btnAddToList->setEnabled(!ui->signalList->selectedMessages().isEmpty());
+        if (_bitMatrixWidget)
+            _bitMatrixWidget->setMessage(ui->signalList->currentMessage());
+        return;
+    }
     ui->btnAddToList->setEnabled(!ui->treeAvailable->selectedItems().isEmpty());
 
     QTreeWidgetItem *item = ui->treeAvailable->currentItem();
@@ -547,16 +572,25 @@ void TxGeneratorWindow::on_cbLayoutCompact_toggled(bool checked)
 
 void TxGeneratorWindow::on_btnAddToList_released()
 {
-    QList<QTreeWidgetItem*> selected = ui->treeAvailable->selectedItems();
-    if (selected.isEmpty()) {
-        QTreeWidgetItem *current = ui->treeAvailable->currentItem();
-        if (current) selected.append(current);
+    QList<CanDbMessage *> messages;
+    if (ui->tabWidgetAvailable->currentWidget() == ui->tabSignalList) {
+        messages = ui->signalList->selectedMessages();
+    } else {
+        auto selected = ui->treeAvailable->selectedItems();
+        if (selected.isEmpty()) {
+            auto *current = ui->treeAvailable->currentItem();
+            if (current && !current->isHidden())
+                selected.append(current);
+        }
+        for (auto *item : selected) {
+            if (!item->isHidden())
+                messages.append(static_cast<CanDbMessage *>(item->data(0, Qt::UserRole).value<void *>()));
+        }
     }
 
-    if (selected.isEmpty()) return;
+    if (messages.isEmpty()) return;
 
-    for (auto *item : selected) {
-        CanDbMessage *dbMsg = static_cast<CanDbMessage*>(item->data(0, Qt::UserRole).value<void*>());
+    for (auto *dbMsg : messages) {
         if (!dbMsg) continue;
 
         CyclicMessage cm;
@@ -943,6 +977,7 @@ void TxGeneratorWindow::onSetupChanged()
     for (auto &cm : _cyclicMessages)
         cm.dbMsg = nullptr;
     resolveDbMessages();
+    populateDbcMessages();
     refreshInterfaces();
 }
 

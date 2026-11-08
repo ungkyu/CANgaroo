@@ -371,3 +371,30 @@ windeployqt 실행 시 Direct3D 12 관련 `dxcompiler.dll`, `dxil.dll` 탐색 �
 - 기본 `build/qt-mingw-release/bin/cangaroo.exe` Release 컴파일/링크 완료.
 - GUI에서 여러 창을 열어 값 변경·목록 제거를 조작하는 검증과 실제 장비 주기 송신 검증은 미실행이다.
 - 커밋 제목: `feat: add separate live editors for Tx Generator messages`. 실제 커밋 ID와 원격 동기화 상태는 Git에서 확인한다.
+
+## 16. FEAT-005: Available Messages의 Signal List 탭 (2026-11-08)
+
+- 탭 순서: **Message List → Signal List → Layout View**. 기존 메시지 검색 및 Layout View는 유지한다.
+- Signal List에서 현재 선택한 인터페이스에 연결된 DBC의 신호를 표시한다. 열은 Signal, Message, CAN ID, DBC이다.
+- 신호 이름으로 해당 신호가 포함된 CAN 메시지 이름과 ID를 확인한다. 메시지 이름, 16진수/10진수 ID, DBC 이름 검색도 지원한다. 대소문자를 구분하지 않으며 공백으로 구분한 모든 검색어가 일치해야 한다.
+- 신호를 선택하고 기존 **Add DBC Message** 버튼을 누르거나 신호 행을 더블클릭하면 해당 신호의 부모 CAN 메시지를 오른쪽 송신 목록에 추가한다.
+- 여러 신호를 선택할 수 있다. 같은 메시지의 신호를 여러 개 선택해 한 번 추가하는 경우 부모 메시지는 한 번만 추가한다. 서로 다른 DBC의 메시지 정의는 별개로 유지한다.
+- 이미 오른쪽에 있는 메시지에 대한 반복 추가는 기존 동작대로 허용한다. 필요하면 Remove Duplicates 기능을 사용한다.
+- 새 메시지의 interval은 기존처럼 DBC GenMsgCycleTime 및 기본값을 사용하고, 정의가 없으면 0이다. 추가만으로 송신을 시작하지 않는다.
+- 탭을 바꾸면 해당 탭의 선택을 기준으로 추가 버튼을 활성화한다. 검색으로 숨긴 신호의 선택과 현재 행을 해제하며, 인터페이스/DBC 재구성 시에도 검색어를 유지한다.
+- 주요 파일: `TxSignalListWidget.h/.cpp`, `TxGeneratorWindow.h/.cpp/.ui/.pri`, `tests/tx_signal_list/`, `tests/tests.pro`.
+- TxSignalListTest: 5 passed / 0 failed (초기화/정리 포함). Qt offscreen 위젯 테스트로 신호 이름에 따른 부모 메시지 검색, 동일 이름 신호의 서로 다른 메시지 표시, 다중 신호 선택의 부모 메시지 중복 제거, 검색 유지/선택 해제, 확장 ID 표시, 더블클릭 추가 요청을 검증했다.
+- 테스트 결과: `build/tests/tx-signal-list-results.txt`. 앱 빌드 로그: `build/tx-signal-list-build.log`.
+- offscreen 플랫폼의 폰트/size hint 경고가 있었으나 테스트는 통과했다. 실제 앱 전체 흐름의 수동 GUI 및 하드웨어 송신 검증은 별도 필요하다.
+- 커밋 제목: `feat: add signal lookup and source licensing notices`. 실제 커밋 ID와 원격 동기화 상태는 Git에서 확인한다.
+- 기본 cangaroo.exe Release 빌드/링크 완료. DBC 목록 교체 중 선택 신호를 차단하여 이전 DBC 선택을 참조하지 않도록 보완했다.
+
+## 17. 소스 공개용 라이선스 고지 정리 (2026-11-08)
+
+- 유지관리자의 방침: 이 fork의 소스·테스트·스크립트·문서만 공개하며 EXE/DLL/SDK 배포는 계획하지 않는다.
+- 원본 LICENSE, 저작권, 구성요소별 SPDX 선택지를 보존했다. 루트 라이선스의 일괄 교체는 하지 않았다.
+- 새 앱·테스트·빌드 코드에 GPL-2.0-or-later 식별자를 추가하고, 수정한 파일에 날짜와 변경 이력 안내를 추가했다.
+- Vector README의 GPLv2-only 선택 문구를 정정하고, 오픈소스 Qt Charts 결합 구성에는 Qt가 제공한 GPLv3 대안을 선택하도록 명시했다.
+- `LICENSES/`에 GPLv2/GPLv3/LGPLv3 전문을 추가하고 `THIRD_PARTY_NOTICES.md`, `docs/licensing_kor.md`, `docs/licensing_eng.md` 및 README 안내를 작성했다.
+- 업체 독점 드라이버 조합과 펌웨어 전체의 권리 검토가 완료되었다고 선언하지 않는다. 상세 검토 범위와 미확인 사항은 라이선스 문서를 따른다.
+- 동작 변경은 없으며 고지, 주석, 문서만 추가했다. 기존 Signal List 기능과 함께 `feat: add signal lookup and source licensing notices` 변경 묶음으로 관리한다. 실제 커밋 ID와 원격 동기화 상태는 Git에서 확인한다.

@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!-- Fork changes (2026-11-08): Tx Generator search, live editing and signal selection; see docs/windows-development_eng.md. -->
+
 <ui version="4.0">
  <class>TxGeneratorWindow</class>
  <widget class="QWidget" name="TxGeneratorWindow">
@@ -94,6 +96,16 @@
               </property>
              </column>
             </widget>
+           </item>
+          </layout>
+         </widget>
+         <widget class="QWidget" name="tabSignalList">
+          <attribute name="title">
+           <string>Signal List</string>
+          </attribute>
+          <layout class="QVBoxLayout" name="verticalLayoutSignalList">
+           <item>
+            <widget class="TxSignalListWidget" name="signalList"/>
            </item>
           </layout>
          </widget>
@@ -447,6 +459,13 @@
    </item>
   </layout>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>TxSignalListWidget</class>
+   <extends>QWidget</extends>
+   <header>window/TxGeneratorWindow/TxSignalListWidget.h</header>
+  </customwidget>
+ </customwidgets>
  <resources/>
  <connections/>
 </ui>

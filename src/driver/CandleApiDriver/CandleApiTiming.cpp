@@ -1,3 +1,5 @@
+// Fork changes (2026-11-08): Windows build / CAN timing / Tx Generator development.
+// See docs/windows-development_eng.md for the change record.
 #include "CandleApiTiming.h"
 
 CandleApiTiming::CandleApiTiming(uint32_t baseClk, uint32_t bitrate, uint32_t samplePoint, uint32_t brp, uint32_t phase_seg1, uint32_t phase_seg2)
