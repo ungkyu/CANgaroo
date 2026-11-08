@@ -20,6 +20,8 @@
 #include "TxGeneratorWindow.h"
 #include "ui_TxGeneratorWindow.h"
 #include "TxGeneratorListUtils.h"
+#include "TxLiveEditDialog.h"
+#include "TxLiveEditUtils.h"
 
 #include <algorithm>
 #include <chrono>
@@ -144,6 +146,7 @@ TxGeneratorWindow::TxGeneratorWindow(QWidget *parent, Backend &backend) :
 
 TxGeneratorWindow::~TxGeneratorWindow()
 {
+    closeLiveEditors();
     delete ui;
 }
 
@@ -204,6 +207,7 @@ bool TxGeneratorWindow::loadXML(Backend &backend, QDomElement &el)
         ui->splitter->restoreState(QByteArray::fromBase64(splitterState.toLatin1()));
     }
 
+    closeLiveEditors();
     _cyclicMessages.clear();
 
     QDomNodeList frames = el.elementsByTagName("frame");
@@ -359,6 +363,86 @@ void TxGeneratorWindow::on_lineEditSearchAvailable_textChanged(const QString &te
 void TxGeneratorWindow::on_lineEditSearchActive_textChanged(const QString &)
 {
     applyActiveFilter();
+}
+
+int TxGeneratorWindow::rowForLiveId(const QUuid &id) const
+{
+    for (int row = 0; row < _cyclicMessages.size(); ++row)
+        if (_cyclicMessages[row].liveId == id)
+            return row;
+    return -1;
+}
+
+void TxGeneratorWindow::closeLiveEditors()
+{
+    const auto editors = _liveEditors;
+    _liveEditors.clear();
+    for (auto dialog : editors)
+        if (dialog)
+            dialog->close();
+}
+
+void TxGeneratorWindow::pruneLiveEditors()
+{
+    const auto ids = _liveEditors.keys();
+    for (const auto &id : ids) {
+        if (rowForLiveId(id) < 0) {
+            auto dialog = _liveEditors.take(id);
+            if (dialog)
+                dialog->close();
+        }
+    }
+}
+
+void TxGeneratorWindow::synchronizeLiveEditor(int row)
+{
+    const auto &cm = _cyclicMessages[row];
+    if (auto dialog = _liveEditors.value(cm.liveId))
+        dialog->synchronize(cm.msg, cm.name, cm.interfaceId, cm.dbMsg, cm.interval,
+                            cm.enabled && _backend.isMeasurementRunning());
+}
+
+void TxGeneratorWindow::on_btnLiveEdit_released()
+{
+    auto selected = ui->treeActive->selectedItems();
+    if (selected.isEmpty() && ui->treeActive->currentItem())
+        selected.append(ui->treeActive->currentItem());
+    if (selected.isEmpty()) {
+        QMessageBox::information(this, tr("Live Edit"), tr("Select a message in the transmission list first."));
+        return;
+    }
+    for (auto *item : selected) {
+        if (item->isHidden())
+            continue;
+        const int row = ui->treeActive->indexOfTopLevelItem(item);
+        if (row < 0 || row >= _cyclicMessages.size())
+            continue;
+        const auto id = _cyclicMessages[row].liveId;
+        auto dialog = _liveEditors.value(id);
+        if (!dialog) {
+            dialog = new TxLiveEditDialog(this, _backend);
+            _liveEditors.insert(id, dialog);
+            connect(dialog, &TxLiveEditDialog::payloadEdited, this, [this, id](const BusMessage &message) {
+                const int current = rowForLiveId(id);
+                if (current < 0)
+                    return;
+                applyTxLivePayload(_cyclicMessages[current].msg, message);
+                updateRowUI(current); // No send, no enable: the existing timer owns transmission.
+            });
+            connect(dialog, &TxLiveEditDialog::intervalEdited, this, [this, id](int value) {
+                const int current = rowForLiveId(id);
+                if (current < 0)
+                    return;
+                setInterval(current, value);
+                updateSendTimer();
+            });
+            connect(dialog, &QDialog::finished, this, [this, id](int) { _liveEditors.remove(id); });
+        }
+        synchronizeLiveEditor(row);
+        dialog->show();
+        dialog->raise();
+        dialog->activateWindow();
+    }
 }
 
 void TxGeneratorWindow::applyActiveFilter()
@@ -698,6 +782,7 @@ void TxGeneratorWindow::treeActiveItemDoubleClicked(QTreeWidgetItem *item, int c
     if (row < 0 || row >= _cyclicMessages.size()) { return; }
 
     CyclicMessage &cm = _cyclicMessages[row];
+    const auto liveId = cm.liveId;
 
     QDialog dlg(this);
     dlg.setWindowTitle(tr("Edit Message: %1 - %2").arg(item->text(1), cm.name));
@@ -732,10 +817,14 @@ void TxGeneratorWindow::treeActiveItemDoubleClicked(QTreeWidgetItem *item, int c
 
     if (dlg.exec() == QDialog::Accepted)
     {
-        cm.msg           = editedMsg;
-        cm.interfaceId   = editedInterfaceId;
-        cm.interfaceName = editedInterfaceName;
-        updateRowUI(row);
+        const int current = rowForLiveId(liveId);
+        if (current < 0)
+            return;
+        auto &target = _cyclicMessages[current];
+        target.msg           = editedMsg;
+        target.interfaceId   = editedInterfaceId;
+        target.interfaceName = editedInterfaceName;
+        updateRowUI(current);
     }
 }
 
@@ -850,6 +939,10 @@ void TxGeneratorWindow::onSendTimerTimeout()
 
 void TxGeneratorWindow::onSetupChanged()
 {
+    closeLiveEditors();
+    for (auto &cm : _cyclicMessages)
+        cm.dbMsg = nullptr;
+    resolveDbMessages();
     refreshInterfaces();
 }
 
@@ -871,6 +964,7 @@ void TxGeneratorWindow::updateMeasurementState()
 
 void TxGeneratorWindow::updateActiveList()
 {
+    pruneLiveEditors();
     // Save selection
     QList<int> selectedRows;
     for (auto *item : ui->treeActive->selectedItems()) {
@@ -919,6 +1013,8 @@ void TxGeneratorWindow::updateActiveList()
     }
     ui->treeActive->blockSignals(false);
     applyActiveFilter();
+    for (int row = 0; row < _cyclicMessages.size(); ++row)
+        synchronizeLiveEditor(row);
 }
 
 void TxGeneratorWindow::updateRowUI(int row)
@@ -953,6 +1049,7 @@ void TxGeneratorWindow::updateRowUI(int row)
 
     ui->treeActive->blockSignals(false);
     applyActiveFilter();
+    synchronizeLiveEditor(row);
 }
 
 
@@ -974,7 +1071,7 @@ QSize TxGeneratorWindow::sizeHint() const
 void TxGeneratorWindow::setInterval(int row, int interval_ms)
 {
     CyclicMessage &cm = _cyclicMessages[row];
-    cm.interval = interval_ms;
+    applyTxInterval(cm.interval, cm.enabled, interval_ms);
     if (interval_ms <= 0) {
         cm.enabled = false;
         cm.nextDue = {};

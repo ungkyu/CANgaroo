@@ -329,3 +329,34 @@ Missing initialization access, XL configuration errors, and FD sample points tha
 - Test results: `build/tests/tx-generator-list-results.txt`. Application build log: `build/tx-generator-list-build.log`.
 - Manual GUI interaction and hardware transmission behavior remain unverified. Commit title: `feat: add Tx Generator search and duplicate removal`. Check Git for the actual commit ID and remote synchronization status.
 - Standard cangaroo.exe Release compilation/linking completed after retrying an initial output-file access denial.
+
+## 15. FEAT-004: Separate live message editor (2026-11-08)
+
+### Usage and when changes apply
+
+- Preserve the existing double-click editor and its OK/Cancel behavior.
+- Select a row in the right-hand transmission list and click **Live Edit** to open a separate non-modal dialog. Selecting multiple rows opens one dialog per message.
+- Reopening the same row raises its existing dialog. Separately registered rows remain independently editable, even when CAN IDs match.
+- Commit a signal or data-byte cell with Enter or by selecting another cell to apply the value immediately. No additional OK is required. Interval changes apply through the spin buttons or when numeric entry is committed.
+- While stopped, update values/intervals only: do not transmit a frame or start RUN automatically.
+- While cyclic transmission is running, the next scheduled frame uses the latest data. Interval changes update the existing scheduler without adding an immediate extra transmission.
+- Setting interval to zero stops that message's cyclic transmission. Setting it positive afterward does not restart it; use the existing RUN button.
+- Closing the dialog preserves applied values and does not change transmission state.
+- The live dialog edits payload bytes, signal values, and interval only. ID, DLC, Standard/Extended, RTR/FD/BRS, and interface are displayed but must be changed through the existing editor.
+
+### Synchronization and lifecycle
+
+- Synchronize changes from the list, existing OK editor, random payload action, and transmission state to open dialogs. Avoid rebuilding active data editors for status/interval-only changes.
+- Bind dialogs to runtime UUIDs rather than row indices so preceding-row removal or list rebuilds cannot redirect edits to another message.
+- Close dialogs for removed messages, including duplicate removal. Also close them on project load, setup changes, and Generator object destruction.
+- In live mode only, reject invalid hex-byte cells and non-finite signal values. Preserve the original RawTx editing mode.
+
+### Implementation and verification
+
+- New files: `TxLiveEditDialog.h/.cpp`, `TxLiveEditUtils.h`, `tests/tx_live_edit/`.
+- Integration: `TxGeneratorWindow.h/.cpp/.ui/.pri`, `RawTxWindow.h/.cpp`, `tests/tests.pro`.
+- TxLiveEditTest: 5 passed / 0 failed, including initialization/cleanup. Verified that payload edits preserve ID/length/interface/frame format, positive interval edits do not start a stopped message, running interval edits retain state, and zero stops without a later automatic restart.
+- Test results: `build/tests/tx-live-edit-results.txt`. Application build log: `build/tx-live-edit-build.log`.
+- Standard `build/qt-mingw-release/bin/cangaroo.exe` Release compilation/linking completed.
+- Multi-dialog GUI interaction, editing/removing rows, and physical cyclic transmission have not yet been verified.
+- Commit title: `feat: add separate live editors for Tx Generator messages`. Check Git for the actual commit ID and remote synchronization status.

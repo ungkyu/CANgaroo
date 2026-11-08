@@ -40,6 +40,7 @@ public:
 
     bool saveXML(Backend &backend, QDomDocument &xml, QDomElement &root) override;
     bool loadXML(Backend &backend, QDomElement &el) override;
+    void setLivePayloadEditing(bool enabled);
 
 protected:
     void retranslateUi() override;
@@ -62,6 +63,7 @@ private:
     BusInterfaceId _slavedInterfaceId;
     bool _settingMessage;
     bool _updatingSignals;
+    bool _livePayloadEditing = false;
 
     QLineEdit *_editId;
     QComboBox *_comboDlc;

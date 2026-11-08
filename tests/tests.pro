@@ -23,3 +23,4 @@ SUBDIRS += \
 win32: SUBDIRS += candle_timing
 SUBDIRS += vector_timing
 SUBDIRS += tx_generator_list
+SUBDIRS += tx_live_edit

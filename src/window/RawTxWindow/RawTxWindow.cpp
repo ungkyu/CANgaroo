@@ -33,6 +33,7 @@
 #include <QSplitter>
 #include <QDomDocument>
 #include <QFont>
+#include <cmath>
 
 #include "core/Backend.h"
 #include "db/model/CanDbMessage.h"
@@ -207,6 +208,20 @@ void RawTxWindow::retranslateUi()
 {
 }
 
+void RawTxWindow::setLivePayloadEditing(bool enabled)
+{
+    _livePayloadEditing = enabled;
+    if (enabled) {
+        _editId->setEnabled(false);
+        _comboDlc->setEnabled(false);
+        _comboInterface->setEnabled(false);
+        _cbExtended->setEnabled(false);
+        _cbRTR->setEnabled(false);
+        _cbFD->setEnabled(false);
+        _cbBRS->setEnabled(false);
+    }
+}
+
 int RawTxWindow::currentDlc() const
 {
     return _comboDlc->currentData().toInt();
@@ -281,6 +296,15 @@ void RawTxWindow::onFieldChanged()
 
     int dlc = currentDlc();
     bool fd = _cbFD->isChecked();
+    if (_livePayloadEditing) {
+        for (int byte = 0; byte < dlc; ++byte) {
+            auto *item = _dataTable->item(byte / DataCols, byte % DataCols);
+            bool valid = false;
+            const auto value = item ? item->text().toUInt(&valid, 16) : 0;
+            if (!valid || value > 255)
+                return; // Never publish an invalid hex cell as zero or truncated data.
+        }
+    }
     if (dlc > 8 && !fd) {
         _cbFD->setChecked(true);
         return;
@@ -370,7 +394,7 @@ void RawTxWindow::onSignalValueChanged(int row, int col)
 
     bool ok;
     double value = item->text().toDouble(&ok);
-    if (!ok) { return; }
+    if (!ok || (_livePayloadEditing && !std::isfinite(value))) { return; }
 
     _updatingSignals = true;
 
@@ -480,6 +504,8 @@ void RawTxWindow::setMessage(const BusMessage &msg, const QString &name, BusInte
 
     _settingMessage = false;
     onFieldChanged(); // populates _can_msg from the current UI state
+    if (_livePayloadEditing)
+        setLivePayloadEditing(true);
 }
 
 bool RawTxWindow::saveXML(Backend &backend, QDomDocument &xml, QDomElement &root)

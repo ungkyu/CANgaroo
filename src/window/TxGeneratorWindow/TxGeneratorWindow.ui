@@ -287,6 +287,16 @@
            </property>
           </widget>
          </item>
+         <item>
+          <widget class="QPushButton" name="btnLiveEdit">
+           <property name="text">
+            <string>Live Edit</string>
+           </property>
+           <property name="toolTip">
+            <string>Open a separate live editor for each selected message. Editing does not start transmission.</string>
+           </property>
+          </widget>
+         </item>
         </layout>
        </item>
        <item>

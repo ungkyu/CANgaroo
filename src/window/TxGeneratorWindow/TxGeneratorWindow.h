@@ -28,6 +28,9 @@
 
 #include <QList>
 #include <QTreeWidgetItem>
+#include <QHash>
+#include <QPointer>
+#include <QUuid>
 
 
 namespace Ui {
@@ -40,6 +43,7 @@ class TxGeneratorWindow;
 
 class QDomDocument;
 class QDomElement;
+class TxLiveEditDialog;
 
 class TxGeneratorWindow : public ConfigurableWidget
 {
@@ -66,6 +70,7 @@ private slots:
     void on_lineEditSearchAvailable_textChanged(const QString &text);
     void on_lineEditSearchActive_textChanged(const QString &text);
     void on_btnRemoveDuplicates_released();
+    void on_btnLiveEdit_released();
     void on_sliderLayoutZoom_valueChanged(int value);
     void on_cbLayoutCompact_toggled(bool checked);
     void on_btnAddToList_released();
@@ -101,6 +106,7 @@ private:
     using TxClock = std::chrono::steady_clock;
 
     struct CyclicMessage {
+        QUuid liveId = QUuid::createUuid(); // Runtime identity, independent of row position.
         BusMessage msg;
         QString name;
         int interval;
@@ -114,6 +120,11 @@ private:
     };
 
     QList<CyclicMessage> _cyclicMessages;
+    QHash<QUuid, QPointer<TxLiveEditDialog>> _liveEditors;
+    int rowForLiveId(const QUuid &id) const;
+    void synchronizeLiveEditor(int row);
+    void pruneLiveEditors();
+    void closeLiveEditors();
 
     bool isLoading;
     void updateAvailableList();

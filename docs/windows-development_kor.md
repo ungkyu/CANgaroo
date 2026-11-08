@@ -340,3 +340,34 @@ windeployqt 실행 시 Direct3D 12 관련 `dxcompiler.dll`, `dxil.dll` 탐색 �
 - 테스트 결과: `build/tests/tx-generator-list-results.txt`. 앱 빌드 로그: `build/tx-generator-list-build.log`.
 - GUI에서 실제 버튼 조작과 장비 송신 동작은 미검증. 커밋 제목: `feat: add Tx Generator search and duplicate removal`. 실제 커밋 ID와 원격 동기화 상태는 Git에서 확인한다.
 - 기본 `cangaroo.exe` Release 빌드/링크 완료. 최초 출력 파일 접근 거부 후 재시도하여 생성했다.
+
+## 15. FEAT-004: 별도 실시간 메시지 편집 창 (2026-11-08)
+
+### 사용 방법과 반영 시점
+
+- 기존 메시지 행 더블클릭 → 편집 → OK/Cancel 방식은 유지한다.
+- 오른쪽 송신 목록에서 메시지를 선택하고 상단의 **Live Edit** 버튼을 누르면 별도 비모달 창을 연다. 여러 항목을 선택하면 메시지마다 창을 열 수 있다.
+- 같은 항목은 창을 중복 생성하지 않고 기존 창을 앞으로 표시한다. 같은 CAN ID라도 별도로 등록한 행은 각각 독립적으로 편집한다.
+- 신호값과 데이터 바이트는 셀 편집을 Enter 또는 다른 셀 선택으로 확정하면 송신 목록에 즉시 반영한다. 별도 OK는 없다. interval은 스핀 버튼 또는 유효한 숫자 입력 확정 시 반영한다.
+- 송신 중지 상태에서는 값/주기만 변경하고 프레임을 보내거나 RUN을 자동으로 시작하지 않는다.
+- 반복 송신 중에는 다음 예약 송신부터 최신 데이터를 사용한다. 주기 변경은 기존 스케줄러로 전달하며 추가 즉시 송신을 만들지 않는다.
+- interval 0은 해당 메시지의 반복 송신을 중지한다. 이후 양수로 바꾸어도 자동 재시작하지 않으며 기존 RUN 버튼으로 시작해야 한다.
+- 새 창의 Close 또는 창 닫기는 이미 반영한 값을 유지하고 현재 송신 상태를 바꾸지 않는다.
+- 새 창에서는 데이터·신호값·주기만 편집한다. ID, DLC, Standard/Extended, RTR/FD/BRS, 인터페이스는 표시만 하며 기존 편집 창에서 변경한다.
+
+### 동기화와 수명 관리
+
+- 목록에서 주기/송신 상태 변경, 기존 OK 편집 반영, 데이터 랜덤 변경 등을 열려 있는 창에 동기화한다. 상태/주기만 바뀔 때 데이터 셀 편집기를 불필요하게 재생성하지 않는다.
+- 행 번호 대신 런타임 UUID로 메시지를 찾는다. 앞 행이 삭제되거나 목록이 재구성되어도 다른 메시지로 연결되지 않는다.
+- 메시지 제거/중복 제거 시 대상 메시지의 Live Edit 창을 닫는다. 프로젝트 로드, 설정 변경, Generator 객체 삭제 시에도 창을 정리한다.
+- 새 live 모드에 한해 잘못된 hex 바이트나 비유한 신호값을 게시하지 않는다. 기존 RawTx 편집 모드는 유지한다.
+
+### 구현 및 검증
+
+- 신규 파일: `TxLiveEditDialog.h/.cpp`, `TxLiveEditUtils.h`, `tests/tx_live_edit/`.
+- 연동 변경: `TxGeneratorWindow.h/.cpp/.ui/.pri`, `RawTxWindow.h/.cpp`, `tests/tests.pro`.
+- TxLiveEditTest: 5 passed / 0 failed (초기화/정리 포함). payload 변경 시 ID/길이/인터페이스/프레임 형식 유지, 중지 상태의 양수 interval 변경 시 비송신 유지, 송신 중 주기 변경과 0ms 정지 후 자동 재시작 방지를 검증했다.
+- 테스트 결과: `build/tests/tx-live-edit-results.txt`. 앱 빌드 로그: `build/tx-live-edit-build.log`.
+- 기본 `build/qt-mingw-release/bin/cangaroo.exe` Release 컴파일/링크 완료.
+- GUI에서 여러 창을 열어 값 변경·목록 제거를 조작하는 검증과 실제 장비 주기 송신 검증은 미실행이다.
+- 커밋 제목: `feat: add separate live editors for Tx Generator messages`. 실제 커밋 ID와 원격 동기화 상태는 Git에서 확인한다.
