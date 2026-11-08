@@ -53,3 +53,6 @@ tests/*/target_wrapper.sh
 
 *.cangaroo
 *.asc
+
+# Local external dependencies
+.deps/
