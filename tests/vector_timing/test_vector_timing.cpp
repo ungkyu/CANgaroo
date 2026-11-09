@@ -95,6 +95,32 @@ private slots:
         QCOMPARE(bitrateReplayCalls, 0);
         device.disconnectDevice();
     }
+    void fd75Applied_data() {
+        QTest::addColumn<int>("rate");
+        for (int rate : {500000, 1000000, 2000000, 4000000, 5000000, 8000000, 10000000})
+            QTest::newRow(qPrintable(QString::number(rate))) << rate;
+    }
+    void fd75Applied() {
+        QFETCH(int, rate);
+        CangarooVectorCanBackend device("can0");
+        device.setConfigurationParameter(QCanBusDevice::BitRateKey, 500000);
+        device.setConfigurationParameter(QCanBusDevice::CanFdKey, true);
+        device.setConfigurationParameter(QCanBusDevice::DataBitRateKey, rate);
+        device.setConfigurationParameter(CangarooVectorCanBackend::NominalSamplePointKey, 800);
+        device.setConfigurationParameter(CangarooVectorCanBackend::DataSamplePointKey, 750);
+        QCOMPARE(device.error(), QCanBusDevice::NoError);
+        if (rate == 8000000) {
+            QVERIFY(!device.connectDevice()); // 10 TQ cannot represent exact 75%.
+            QCOMPARE(timingCalls, 0); QCOMPARE(activationCalls, 0);
+            return;
+        }
+        QVERIFY(device.connectDevice());
+        QCOMPARE(fdTiming.dataBitRate, unsigned(rate));
+        QCOMPARE((1 + fdTiming.tseg1Dbr) * 4, (1 + fdTiming.tseg1Dbr + fdTiming.tseg2Dbr) * 3);
+        QVERIFY(fdTiming.tseg1Dbr <= 32 && fdTiming.tseg2Dbr <= 16);
+        QCOMPARE(bitrateReplayCalls, 0);
+        device.disconnectDevice();
+    }
     void refusesMissingInitializationAccess() {
         allowInitialization = false;
         CangarooVectorCanBackend device("can0");

@@ -38,18 +38,38 @@ bool CandleApiTiming::with80Percent(const candle_capability_t &caps,
                                   const candle_bittiming_t &original,
                                   candle_bittiming_t &result)
 {
+    return withSamplePoint(caps, original, 800, result);
+}
+
+// Fork changes (2026-11-09): add exact 75% CAN FD data-phase timings.
+bool CandleApiTiming::with75PercentData(const candle_bittiming_t &original,
+                                      candle_bittiming_t &result)
+{
+    // Conservative data-phase limits used by the existing FD timing table.
+    candle_capability_t limits{};
+    limits.brp_min = 1; limits.brp_max = 32; limits.brp_inc = 1;
+    limits.tseg1_min = 2; limits.tseg1_max = 31;
+    limits.tseg2_min = 1; limits.tseg2_max = 16; limits.sjw_max = 1;
+    return withSamplePoint(limits, original, 750, result);
+}
+
+bool CandleApiTiming::withSamplePoint(const candle_capability_t &caps,
+                                    const candle_bittiming_t &original,
+                                    uint32_t samplePoint, candle_bittiming_t &result)
+{
     const uint64_t cycles = uint64_t(original.brp)
         * (1ULL + original.prop_seg + original.phase_seg1 + original.phase_seg2);
-    if (!cycles || !caps.brp_min || !caps.brp_inc || !caps.sjw_max)
+    if (!cycles || !caps.brp_min || !caps.brp_inc || !caps.sjw_max
+        || samplePoint == 0 || samplePoint >= 1000)
         return false;
     for (uint64_t brp = caps.brp_min; brp <= caps.brp_max; brp += caps.brp_inc) {
         if (cycles % brp)
             continue;
         const uint64_t tq = cycles / brp;
-        if (tq % 5 || tq < 5)
+        if (tq < 3 || (tq * samplePoint) % 1000)
             continue;
-        const uint64_t tseg1 = tq * 4 / 5 - 1;
-        const uint64_t tseg2 = tq / 5;
+        const uint64_t tseg1 = tq * samplePoint / 1000 - 1;
+        const uint64_t tseg2 = tq - tseg1 - 1;
         if (tseg1 < 2 || tseg1 < caps.tseg1_min || tseg1 > caps.tseg1_max
             || tseg2 < caps.tseg2_min || tseg2 > caps.tseg2_max)
             continue;

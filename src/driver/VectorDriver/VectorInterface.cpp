@@ -23,6 +23,7 @@
 
 #include "VectorInterface.h"
 #include "VectorDriver.h"
+#include "VectorTiming.h"
 #ifdef Q_OS_WIN
 #include "qtvectorcan/vectorcanbackend.h"
 #endif
@@ -90,6 +91,11 @@ QList<CanTiming> VectorInterface::getAvailableBitrates()
                     // 80% is inexact there; expose the exact 87.5% alternative.
                     const unsigned dataSp = (fdbr == 5000000 || fdbr == 10000000) ? 875 : 800;
                     retval << CanTiming(i++, br, fdbr, sp, dataSp);
+                    // Fork changes (2026-11-09): only advertise exact 75% data timing.
+                    uint32_t tseg1 = 0, tseg2 = 0;
+                    const unsigned prescaler = fdbr == 500000 ? 4 : (fdbr == 1000000 ? 2 : 1);
+                    if (vectorTimingSegments(80000000 / fdbr / prescaler, 750, tseg1, tseg2))
+                        retval << CanTiming(i++, br, fdbr, sp, 750);
                 }
             }
         }

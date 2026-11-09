@@ -387,3 +387,20 @@ Missing initialization access, XL configuration errors, and FD sample points tha
 - Add GPLv2/GPLv3/LGPLv3 texts under LICENSES, THIRD_PARTY_NOTICES.md, docs/licensing_kor.md, docs/licensing_eng.md, and README guidance.
 - Do not claim that proprietary driver combinations or all firmware have passed a complete rights audit; see licensing documents for scope and unresolved items.
 - No behavioral changes: notices, comments and documentation only. Group these notices with Signal List under `feat: add signal lookup and source licensing notices`. Check Git for the actual commit ID and remote synchronization status.
+
+## 18. FEAT-006: CAN nominal 80% + CAN FD data 75% combination (2026-11-09)
+
+- Add 75.0% to Candlelight/gs_usb and Vector FD data-phase sample points. Preserve nominal sample point options and existing data presets.
+- Candlelight: preserve the actual bit period of each existing FD bitrate while calculating exact 75% BRP/TSEG values. Add results to `_fdTimings`, shared by GUI presets and USB configuration of saved settings.
+- Use the existing FD table's conservative limits (TSEG1≤31, TSEG2≤16, BRP≤32). This does not implement additional device-specific data capability queries; physical validation remains required.
+- Supported calculations: 160MHz existing rates 1/2/4/5/8Mbps; 80MHz 1/2/4/5Mbps; 48MHz 1/2/3/4Mbps. Do not duplicate the existing 16MHz 75% presets.
+- Exact 75% is impossible for the existing 170MHz rates 1/2/5/10Mbps, 125MHz rates 1/2.5/5Mbps, and 80MHz 8Mbps; do not add misleading presets.
+- Vector: add 75% for FD data 0.5/1/2/4/5/10Mbps and accept 750 in the XL backend's data sample point key. Nominal accepted values remain unchanged. Pass actual 75% data segments to the XL API.
+- Vector 8Mbps uses 10 TQ with the 80MHz timing clock and cannot represent exact 75%. Do not advertise it; reject an impossible saved request before channel activation.
+- Tests: CandleTimingTest 22 passed / 0 failed; VectorTimingTest 16 passed / 0 failed, including initialization/cleanup. Covered exact ratios, bit-period preservation, FD segment bounds, mocked XL configuration delivery, and rejection of inexact combinations.
+- Results: `build/tests/candle_timing-fd75-results.txt`, `build/tests/vector_timing-fd75-results.txt`. Application build log: `build/fd75-build.log`.
+- Manual GUI interaction and physical CAN communication remain unverified. Commit title: `feat: support 80% nominal and 75% CAN FD data sample points`. Check Git for the actual commit ID and remote synchronization status.
+- Standard `build/qt-mingw-release/bin/cangaroo.exe` Release compilation/linking completed.
+
+- The requested combination is **CAN Nominal sample point 80.0% + CAN FD Data sample point 75.0%**; for example, nominal 500kbps / 80% and data 2Mbps / 75%.
+- Vector mock XL API tests configure nominal=800 and data=750 simultaneously. Candlelight combines existing nominal 80% timings with the new data 75% timings, only where both can be represented by the device clock and bitrate combination.

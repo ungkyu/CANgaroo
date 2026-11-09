@@ -252,6 +252,22 @@ CandleApiInterface::CandleApiInterface(CandleApiDriver *driver,
     _fdTimings
         << CandleApiTiming(16000000,   1000000, 750, 1, 10,  4)  //  16M/(1*16)   = 1M,  SP=75.0%
         << CandleApiTiming(16000000,   2000000, 750, 1,  4,  2); //  16M/(1*8)    = 2M,  SP=75.0%
+
+    // Fork changes (2026-11-09): add realizable 75% data presets to the same
+    // table consumed by both the GUI and setDataBitTiming(), including saved setups.
+    const auto originalDataTimings = _fdTimings;
+    for (const auto &entry : originalDataTimings) {
+        const bool exists = std::any_of(_fdTimings.cbegin(), _fdTimings.cend(),
+            [&entry](const CandleApiTiming &candidate) {
+                return candidate.getBaseClk() == entry.getBaseClk()
+                    && candidate.getBitrate() == entry.getBitrate()
+                    && candidate.getSamplePoint() == 750;
+            });
+        candle_bittiming_t timing;
+        if (!exists && CandleApiTiming::with75PercentData(entry.getTiming(), timing))
+            _fdTimings << CandleApiTiming(entry.getBaseClk(), entry.getBitrate(), 750,
+                                         timing.brp, timing.phase_seg1, timing.phase_seg2);
+    }
 }
 
 CandleApiInterface::~CandleApiInterface()

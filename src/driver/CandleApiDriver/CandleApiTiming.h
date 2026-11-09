@@ -26,6 +26,11 @@ public:
     static bool with80Percent(const candle_capability_t &caps,
                               const candle_bittiming_t &original,
                               candle_bittiming_t &result);
+    static bool withSamplePoint(const candle_capability_t &caps,
+                                const candle_bittiming_t &original,
+                                uint32_t samplePoint, candle_bittiming_t &result);
+    static bool with75PercentData(const candle_bittiming_t &original,
+                                  candle_bittiming_t &result);
 
 private:
     uint32_t _baseClk;

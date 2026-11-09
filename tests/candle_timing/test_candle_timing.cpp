@@ -7,6 +7,29 @@
 class CandleTimingTest : public QObject {
     Q_OBJECT
 private slots:
+    void fd75Percent_data() {
+        QTest::addColumn<unsigned>("cycles");
+        QTest::addColumn<bool>("possible");
+        for (unsigned cycles : {160u, 80u, 40u, 32u, 20u, 48u, 24u, 16u, 12u, 8u})
+            QTest::newRow(qPrintable(QString::number(cycles))) << cycles << true;
+        for (unsigned cycles : {170u, 85u, 34u, 17u, 125u, 50u, 25u, 10u})
+            QTest::newRow(qPrintable(QString::number(cycles))) << cycles << false;
+    }
+    void fd75Percent() {
+        QFETCH(unsigned, cycles);
+        QFETCH(bool, possible);
+        candle_bittiming_t result{};
+        // Only the bit period matters; the replacement must meet FD segment limits.
+        const candle_bittiming_t original{1, cycles - 3, 1, 1, 1};
+        QCOMPARE(CandleApiTiming::with75PercentData(original, result), possible);
+        if (!possible) return;
+        const unsigned tq = 1 + result.prop_seg + result.phase_seg1 + result.phase_seg2;
+        QCOMPARE(tq * result.brp, cycles);
+        QCOMPARE((1 + result.prop_seg + result.phase_seg1) * 4, tq * 3);
+        QVERIFY(result.prop_seg + result.phase_seg1 <= 31);
+        QVERIFY(result.phase_seg2 >= 1 && result.phase_seg2 <= 16);
+        QVERIFY(result.brp >= 1 && result.brp <= 32);
+    }
     void exactTimingAndLimits() {
         candle_capability_t caps{};
         caps.brp_min = 1; caps.brp_max = 1024; caps.brp_inc = 1;

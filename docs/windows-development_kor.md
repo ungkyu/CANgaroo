@@ -398,3 +398,20 @@ windeployqt 실행 시 Direct3D 12 관련 `dxcompiler.dll`, `dxil.dll` 탐색 �
 - `LICENSES/`에 GPLv2/GPLv3/LGPLv3 전문을 추가하고 `THIRD_PARTY_NOTICES.md`, `docs/licensing_kor.md`, `docs/licensing_eng.md` 및 README 안내를 작성했다.
 - 업체 독점 드라이버 조합과 펌웨어 전체의 권리 검토가 완료되었다고 선언하지 않는다. 상세 검토 범위와 미확인 사항은 라이선스 문서를 따른다.
 - 동작 변경은 없으며 고지, 주석, 문서만 추가했다. 기존 Signal List 기능과 함께 `feat: add signal lookup and source licensing notices` 변경 묶음으로 관리한다. 실제 커밋 ID와 원격 동기화 상태는 Git에서 확인한다.
+
+## 18. FEAT-006: CAN nominal 80% + CAN FD data 75% 조합 (2026-11-09)
+
+- Candlelight / gs_usb 및 Vector의 FD 데이터 구간 sample point에 75.0% 선택을 추가했다. Nominal sample point와 기존 FD 선택지는 유지한다.
+- Candlelight: 기존 FD bitrate의 실제 bit period를 유지하고 정확한 75%를 만드는 BRP/TSEG를 계산해 `_fdTimings`에 추가한다. GUI 프리셋과 저장 설정을 실제 USB로 적용하는 경로가 같은 테이블을 사용한다.
+- Candle 계산은 기존 FD 테이블의 보수적인 제한(TSEG1≤31, TSEG2≤16, BRP≤32)을 사용한다. 장치별 FD capability 추가 조회를 구현한 것은 아니므로 실제 장치 적용은 검증이 필요하다.
+- 160MHz의 기존 FD rate 1/2/4/5/8Mbps는 75% 계산이 가능하다. 80MHz는 1/2/4/5Mbps, 48MHz는 1/2/3/4Mbps가 가능하다. 16MHz의 기존 75% 항목은 중복하지 않는다.
+- 170MHz의 기존 FD rate 1/2/5/10Mbps와 125MHz의 기존 1/2.5/5Mbps는 정확한 75%를 만들 수 없어 항목을 추가하지 않는다. 80MHz 8Mbps도 정확한 75%가 불가능하다.
+- Vector: FD data 0.5/1/2/4/5/10Mbps에 75% 선택을 추가하고 XL 백엔드의 data sample point 설정에 750을 허용한다. 기존 nominal 허용값은 변경하지 않는다. XL API의 data TSEG 설정에 실제 75%를 전달한다.
+- Vector 8Mbps는 80MHz clock에서 10 TQ여서 75%를 정확히 표현할 수 없으므로 표시하지 않는다. 저장 설정에서 해당 불가능 조합을 요청해도 채널 활성화 전에 실패한다.
+- 테스트: CandleTimingTest 22 passed / 0 failed, VectorTimingTest 16 passed / 0 failed (초기화/정리 포함). 정확한 비율, bit period 유지, FD segment 제한, XL 모의 API 전달 및 불가능 조합 거부를 검증했다.
+- 테스트 결과: `build/tests/candle_timing-fd75-results.txt`, `build/tests/vector_timing-fd75-results.txt`. 앱 빌드 로그: `build/fd75-build.log`.
+- 실제 GUI 수동 조작 및 CAN 장비 송수신은 미검증이다. 커밋 제목: `feat: support 80% nominal and 75% CAN FD data sample points`. 실제 커밋 ID와 원격 동기화 상태는 Git에서 확인한다.
+- 기본 `build/qt-mingw-release/bin/cangaroo.exe` Release 컴파일/링크 완료.
+
+- 요청한 설정 조합은 **CAN Nominal sample point 80.0% + CAN FD Data sample point 75.0%**이다. 예: nominal 500kbps / 80%, data 2Mbps / 75%.
+- Vector 모의 XL API 테스트는 nominal=800, data=750을 동시에 설정하여 검증했다. Candlelight는 기존 nominal 80% 타이밍과 새 FD data 75% 타이밍을 조합하며, 양쪽 타이밍을 모두 구현할 수 있는 장치 클럭·bitrate 조합에서만 사용할 수 있다.

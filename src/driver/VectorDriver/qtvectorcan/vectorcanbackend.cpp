@@ -333,7 +333,8 @@ bool CangarooVectorCanBackendPrivate::setConfigurationParameter(QCanBusDevice::C
     case CangarooVectorCanBackend::NominalSamplePointKey:
     case CangarooVectorCanBackend::DataSamplePointKey:
         if (q->state() != QCanBusDevice::UnconnectedState
-            || (value.toUInt() != 800 && value.toUInt() != 875)) {
+            || (value.toUInt() != 800 && value.toUInt() != 875
+                && !(key == CangarooVectorCanBackend::DataSamplePointKey && value.toUInt() == 750))) {
             q->setError(CangarooVectorCanBackend::tr("Unsupported sample point or channel already connected."),
                         QCanBusDevice::ConfigurationError);
             return false;
