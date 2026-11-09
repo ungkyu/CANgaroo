@@ -115,7 +115,9 @@ if ($LASTEXITCODE -ne 0) { throw 'Build failed' }
 
 이번에는 `src/src.pro`를 직접 빌드했다. 루트의 `cangaroo.pro`를 통한 테스트 포함 빌드는 검증하지 않았다. 환경 변수 변경은 해당 PowerShell 프로세스에만 적용된다.
 
-### 4.4 실행 파일 배포 준비
+### 4.4 로컬 실행 파일 준비
+
+권장 명령: 저장소 루트에서 `.\scripts\windows\copy-runtime.ps1` 실행. 실행 중인 앱은 먼저 종료한다. 이 스크립트는 19절에 설명되어 있으며, 아래 명령은 초기 수동 설정의 참고 기록이다.
 
 ```powershell
 $env:PATH = 'E:\Qt\6.12.0\mingw_64\bin;E:\Qt\Tools\mingw1310_64\bin;' + $env:PATH
@@ -415,3 +417,26 @@ windeployqt 실행 시 Direct3D 12 관련 `dxcompiler.dll`, `dxil.dll` 탐색 �
 
 - 요청한 설정 조합은 **CAN Nominal sample point 80.0% + CAN FD Data sample point 75.0%**이다. 예: nominal 500kbps / 80%, data 2Mbps / 75%.
 - Vector 모의 XL API 테스트는 nominal=800, data=750을 동시에 설정하여 검증했다. Candlelight는 기존 nominal 80% 타이밍과 새 FD data 75% 타이밍을 조합하며, 양쪽 타이밍을 모두 구현할 수 있는 장치 클럭·bitrate 조합에서만 사용할 수 있다.
+
+## 19. BUILD-003: 로컬 실행용 런타임 복사 스크립트 (2026-11-09)
+
+- `scripts/windows/copy-runtime.ps1` 추가. 빌드는 기존 `build-qt.ps1`, 로컬 실행 파일 준비는 복사 스크립트로 분리한다.
+- 기본 대상: `build/qt-mingw-release/bin/cangaroo.exe` 옆. Qt의 windeployqt로 Release DLL·플러그인·컴파일러 런타임을 복사하고, MinGW opt의 Python 3.9 DLL·확장 의존 DLL과 표준 라이브러리를 배치한다.
+- `-QtDir`, `-MinGWDir`, `-ExePath` 옵션으로 설치 경로 및 대상 EXE 변경 가능. 저장소 위치는 자동 탐지한다.
+- 입력 파일과 핵심 출력 파일을 확인하고 실패 시 오류를 반환한다. 표준 라이브러리는 robocopy로 병합하며 대상 파일 삭제/정리는 하지 않는다. PATH는 실행 후 복원한다.
+- 설치된 Python 구성에 있는 모듈을 복사하는 작업이며, 설치 자체에 없는 확장 모듈을 새로 제공하지 않는다. 현재 키트의 `_ssl` 부재도 복사로 해결되는 것은 아니다. Tcl/Tk 리소스 등 선택 기능은 별도 검증이 필요하다.
+- Vector XL 등 업체 드라이버/SDK는 복사하지 않는다. 로컬 실행 준비용이며 EXE/DLL을 Git에 올리거나 외부 배포하는 기능은 없다.
+
+```powershell
+# 저장소 루트에서 순서대로 실행
+.\scripts\windows\build-qt.ps1
+.\scripts\windows\copy-runtime.ps1
+
+# EXE를 다른 폴더에 놓은 경우
+.\scripts\windows\copy-runtime.ps1 -ExePath '.\build\local-run\cangaroo.exe'
+```
+
+- 검증: EXE만 있는 `build/runtime-smoke/`에서 실행 파일·Qt DLL·qwindows 플러그인·MinGW/Python 런타임 생성 확인. 기본 bin에서도 적용 완료.
+- 복사한 Python 인터프리터를 테스트 폴더에서 최소 PATH로 실행해 해당 폴더의 표준 라이브러리 및 json/encodings/math/zlib 로딩 확인. 실제 CAN 장비 동작은 이번 검증 범위가 아니다.
+- 로그: `build/runtime-copy-smoke.log`, `build/runtime-copy.log`. 테스트용 Python EXE와 복사 결과는 build 아래에만 두어 Git에서 제외한다.
+- 커밋 제목: `build: add Windows runtime copy script`. 실제 커밋 ID와 원격 동기화 상태는 Git에서 확인한다.

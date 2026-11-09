@@ -119,7 +119,9 @@ if ($LASTEXITCODE -ne 0) { throw 'Build failed' }
 
 The app was built directly from `src/src.pro`. A complete root `cangaroo.pro` build with all tests has not been verified. Environment changes affect only the current process; the build script restores its PATH/PYTHONPATH afterward.
 
-### 4.4 Prepare the runtime directory
+### 4.4 Prepare the local runtime directory
+
+Recommended: run `.\scripts\windows\copy-runtime.ps1` from the repository root after closing the app. See section 19. The commands below retain the initial manual setup as a reference.
 
 ```powershell
 $env:PATH = 'E:\Qt\6.12.0\mingw_64\bin;E:\Qt\Tools\mingw1310_64\bin;' + $env:PATH
@@ -404,3 +406,26 @@ Missing initialization access, XL configuration errors, and FD sample points tha
 
 - The requested combination is **CAN Nominal sample point 80.0% + CAN FD Data sample point 75.0%**; for example, nominal 500kbps / 80% and data 2Mbps / 75%.
 - Vector mock XL API tests configure nominal=800 and data=750 simultaneously. Candlelight combines existing nominal 80% timings with the new data 75% timings, only where both can be represented by the device clock and bitrate combination.
+
+## 19. BUILD-003: Local Windows runtime copy script (2026-11-09)
+
+- Add `scripts/windows/copy-runtime.ps1`. Keep compilation in build-qt.ps1 and local runtime preparation in a separate script.
+- Default target: beside `build/qt-mingw-release/bin/cangaroo.exe`. Run windeployqt for Release DLLs/plugins/compiler runtime; copy Python 3.9 runtime/extension dependency DLLs and standard library from the MinGW opt installation.
+- Accept `-QtDir`, `-MinGWDir`, and `-ExePath`; detect the repository root automatically.
+- Validate inputs and core outputs; fail on errors. Merge the standard library with robocopy without purging destination files. Restore PATH afterward.
+- Copy modules available in the installed kit; do not provide missing extensions. The current kit's missing `_ssl` is not repaired by copying. Optional resources such as Tcl/Tk require separate verification.
+- Do not copy vendor adapter SDKs/drivers such as Vector XL. This prepares local execution only; it does not publish binaries or commit runtime files.
+
+```powershell
+# From the repository root
+.\scripts\windows\build-qt.ps1
+.\scripts\windows\copy-runtime.ps1
+
+# When the EXE is in another directory
+.\scripts\windows\copy-runtime.ps1 -ExePath '.\build\local-run\cangaroo.exe'
+```
+
+- Verified deployment into build/runtime-smoke initially containing only the EXE, including Qt DLLs, qwindows, MinGW and Python runtime files. Also applied to the standard bin directory.
+- Executed a copied Python interpreter with minimal PATH and verified the copied standard library and json/encodings/math/zlib. Physical CAN hardware was outside this check.
+- Logs: `build/runtime-copy-smoke.log`, `build/runtime-copy.log`. Test interpreter and generated runtime files remain ignored under build.
+- Commit title: `build: add Windows runtime copy script`. Check Git for the actual commit ID and remote synchronization status.
