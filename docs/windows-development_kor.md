@@ -3,7 +3,7 @@
 이 문서는 CANgaroo의 Windows 빌드 환경, 설정 과정, 실행 확인 범위와 앞으로 추가할 기능을 관리한다. 환경이나 기능이 바뀌면 관련 절차와 검증 결과를 함께 갱신한다.
 
 - 최초 작성: 2026-11-08
-- 마지막 갱신: 2026-11-08
+- 마지막 갱신: 2026-11-10
 - 작업 저장소: `E:\MyWorkspaces\CANgaroo`
 - 현재 브랜치: `develop` (최초 작업 브랜치 `build/qt-20261108`은 `master`에서 생성)
 - 빌드 대상: Windows x64 / Qt 6.12.0 / MinGW / Release
@@ -440,3 +440,20 @@ windeployqt 실행 시 Direct3D 12 관련 `dxcompiler.dll`, `dxil.dll` 탐색 �
 - 복사한 Python 인터프리터를 테스트 폴더에서 최소 PATH로 실행해 해당 폴더의 표준 라이브러리 및 json/encodings/math/zlib 로딩 확인. 실제 CAN 장비 동작은 이번 검증 범위가 아니다.
 - 로그: `build/runtime-copy-smoke.log`, `build/runtime-copy.log`. 테스트용 Python EXE와 복사 결과는 build 아래에만 두어 Git에서 제외한다.
 - 커밋 제목: `build: add Windows runtime copy script`. 실제 커밋 ID와 원격 동기화 상태는 Git에서 확인한다.
+
+## 20. FEAT-007: 여러 CAN 메시지의 선택 신호 통합 편집 (2026-11-10)
+
+- 기존 메시지별 Live Edit 및 더블클릭 OK/Cancel 편집은 유지한다. 송신 목록 아래의 **Signal Panel** 버튼으로 하나의 비모달 통합 창을 연다.
+- 왼쪽에는 오른쪽 송신 목록에 이미 등록된 DBC 메시지의 신호를 나열한다. 신호/메시지/ID/인터페이스 검색 후 여러 항목을 선택하고 **Add Selected Signals**로 오른쪽 표에 등록한다. 더블클릭 추가도 가능하다.
+- 표에는 메시지 이름과 등록 행 번호, CAN ID, 인터페이스, 신호 이름, 값, 단위, 주기, 송신 상태를 표시한다. 원하는 신호만 추가하며 같은 메시지의 같은 신호는 중복 등록하지 않는다.
+- Value 셀을 Enter 또는 포커스 이동으로 확정하면 해당 신호 비트만 현재 메시지에 반영한다. 다른 신호 비트, 메시지 ID/형식/인터페이스, 주기, 송신 상태는 유지한다.
+- 중지된 메시지는 값만 바꾸며 자동 송신/RUN을 시작하지 않는다. 송신 중인 메시지는 기존 스케줄의 다음 송신부터 새 값을 사용한다. 패널에는 직접 송신/시작 버튼을 두지 않는다.
+- 기존 Live Edit, OK 편집, Randomize Data, 주기 및 RUN/STOP 변경도 패널 표시와 동기화한다. 동일 ID나 이름으로 등록된 서로 다른 행은 UUID로 구분하여 다른 메시지를 수정하지 않는다.
+- **Remove from Panel**은 표시 신호만 제거한다. 원래 CAN 메시지나 송신은 유지한다. 원래 메시지가 송신 목록에서 삭제되면 그 행에 연결된 패널 신호도 정리한다.
+- 창 닫기/재열기 시 현재 세션의 선택을 유지한다. 프로젝트 재로드, 설정 변경, Generator 객체 삭제 때는 초기화한다. 선택 신호 구성의 프로젝트 저장/복원은 이번 범위에 포함하지 않는다.
+- 잘못된 숫자, 비유한 값, DBC 범위/비트 표현 범위를 넘는 값, 현재 비활성 멀티플렉스 신호 및 RTR의 신호 편집을 거부한다. 변경한 물리값이 정수 raw 값으로 양자화되면 실제 반영값을 다시 표시한다.
+- 신규 파일: `TxSignalPanel.h/.cpp`, `tests/tx_signal_panel/`. 연동 파일: `TxGeneratorWindow.h/.cpp/.ui/.pri`, `tests/tests.pro`.
+- TxSignalPanelTest: 6 passed / 0 failed (초기화/정리 포함). 다중 메시지/동일 ID 구분, 일부 신호 비트 수정, 다른 비트 보존, 송신 상태/주기 보존, 중복 pin 방지, 숨긴 선택 정리, pin 제거와 메시지 삭제 구분, 닫기/재열기, 원본 제거와 지연 갱신, signed/scaling/64-bit 범위, 멀티플렉스 활성화를 Qt offscreen으로 검증했다.
+- 테스트 로그: `build/tests/tx-signal-panel-results.txt`. 앱 빌드 로그: `build/tx-signal-panel-build.log`. offscreen 폰트/size hint 경고는 있었으며 실제 장비 송신과 전체 앱 수동 GUI 검증은 별도로 필요하다.
+- 커밋 제목: `feat: add multi-message live signal panel`. 실제 커밋 ID와 원격 동기화 상태는 Git에서 확인한다.
+- 기본 `build/qt-mingw-release/bin/cangaroo.exe` Release 컴파일/링크 완료.

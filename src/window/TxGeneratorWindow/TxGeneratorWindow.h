@@ -46,6 +46,7 @@ class TxGeneratorWindow;
 class QDomDocument;
 class QDomElement;
 class TxLiveEditDialog;
+class TxSignalPanel;
 
 class TxGeneratorWindow : public ConfigurableWidget
 {
@@ -74,6 +75,7 @@ private slots:
     void on_lineEditSearchActive_textChanged(const QString &text);
     void on_btnRemoveDuplicates_released();
     void on_btnLiveEdit_released();
+    void on_btnSignalPanel_released();
     void on_sliderLayoutZoom_valueChanged(int value);
     void on_cbLayoutCompact_toggled(bool checked);
     void on_btnAddToList_released();
@@ -124,6 +126,8 @@ private:
 
     QList<CyclicMessage> _cyclicMessages;
     QHash<QUuid, QPointer<TxLiveEditDialog>> _liveEditors;
+    QPointer<TxSignalPanel> _signalPanel;
+    void synchronizeSignalPanel();
     int rowForLiveId(const QUuid &id) const;
     void synchronizeLiveEditor(int row);
     void pruneLiveEditors();

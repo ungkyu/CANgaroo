@@ -24,6 +24,7 @@
 #include "TxGeneratorListUtils.h"
 #include "TxLiveEditDialog.h"
 #include "TxLiveEditUtils.h"
+#include "TxSignalPanel.h"
 
 #include <algorithm>
 #include <chrono>
@@ -394,6 +395,13 @@ int TxGeneratorWindow::rowForLiveId(const QUuid &id) const
 
 void TxGeneratorWindow::closeLiveEditors()
 {
+    if (_signalPanel) {
+        _signalPanel->blockSignals(true);
+        _signalPanel->synchronize({}); // Drop DBC pointers before deferred deletion.
+        _signalPanel->close();
+        _signalPanel->deleteLater();
+        _signalPanel = nullptr;
+    }
     const auto editors = _liveEditors;
     _liveEditors.clear();
     for (auto dialog : editors)
@@ -419,6 +427,42 @@ void TxGeneratorWindow::synchronizeLiveEditor(int row)
     if (auto dialog = _liveEditors.value(cm.liveId))
         dialog->synchronize(cm.msg, cm.name, cm.interfaceId, cm.dbMsg, cm.interval,
                             cm.enabled && _backend.isMeasurementRunning());
+}
+
+void TxGeneratorWindow::synchronizeSignalPanel()
+{
+    if (!_signalPanel) return;
+    QList<TxPanelMessage> messages;
+    for (int row = 0; row < _cyclicMessages.size(); ++row) {
+        const auto &cm = _cyclicMessages[row];
+        auto *busInterface = _backend.getInterfaceById(cm.interfaceId);
+        messages.append({cm.liveId, QString("%1 [#%2]").arg(cm.name).arg(row + 1),
+            busInterface ? busInterface->getName()
+                : (cm.interfaceName.isEmpty() ? QString::number(cm.interfaceId) : cm.interfaceName), cm.msg, cm.dbMsg,
+            cm.interval, cm.enabled && _backend.isMeasurementRunning()});
+    }
+    _signalPanel->synchronize(messages);
+}
+
+void TxGeneratorWindow::on_btnSignalPanel_released()
+{
+    if (!_signalPanel) {
+        _signalPanel = new TxSignalPanel(this);
+        connect(_signalPanel, &TxSignalPanel::signalEdited, this,
+            [this](const QUuid &id, const QString &name, double value) {
+                const int row = rowForLiveId(id);
+                if (row < 0 || !_cyclicMessages[row].dbMsg) return;
+                auto *signal = _cyclicMessages[row].dbMsg->getSignalByName(name);
+                if (signal && applyTxPanelSignal(_cyclicMessages[row].msg, *signal, value))
+                    updateRowUI(row); // Only signal bits change; never send or enable here.
+                else
+                    synchronizeSignalPanel();
+            });
+    }
+    synchronizeSignalPanel();
+    _signalPanel->show();
+    _signalPanel->raise();
+    _signalPanel->activateWindow();
 }
 
 void TxGeneratorWindow::on_btnLiveEdit_released()
@@ -1050,6 +1094,7 @@ void TxGeneratorWindow::updateActiveList()
     applyActiveFilter();
     for (int row = 0; row < _cyclicMessages.size(); ++row)
         synchronizeLiveEditor(row);
+    synchronizeSignalPanel();
 }
 
 void TxGeneratorWindow::updateRowUI(int row)
@@ -1085,6 +1130,7 @@ void TxGeneratorWindow::updateRowUI(int row)
     ui->treeActive->blockSignals(false);
     applyActiveFilter();
     synchronizeLiveEditor(row);
+    synchronizeSignalPanel();
 }
 
 

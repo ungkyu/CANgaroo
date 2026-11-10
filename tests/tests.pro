@@ -27,3 +27,4 @@ SUBDIRS += vector_timing
 SUBDIRS += tx_generator_list
 SUBDIRS += tx_live_edit
 SUBDIRS += tx_signal_list
+SUBDIRS += tx_signal_panel

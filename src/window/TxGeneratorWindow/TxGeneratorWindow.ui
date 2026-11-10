@@ -411,6 +411,16 @@
        <item>
         <layout class="QHBoxLayout" name="horizontalLayoutActiveControls2">
          <item>
+          <widget class="QPushButton" name="btnSignalPanel">
+           <property name="text">
+            <string>Signal Panel</string>
+           </property>
+           <property name="toolTip">
+            <string>Choose signals from multiple registered messages and edit their live values in one window.</string>
+           </property>
+          </widget>
+         </item>
+         <item>
           <widget class="QPushButton" name="btnSendOnce">
            <property name="text">
             <string>Send</string>

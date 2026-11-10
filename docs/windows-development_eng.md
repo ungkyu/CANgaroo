@@ -2,7 +2,7 @@
 
 This document tracks CANgaroo's Windows build environment, setup, verification scope, and future features. Update procedures and verification results together when the environment or functionality changes.
 
-- Created / last updated: 2026-11-08 / 2026-11-08
+- Created / last updated: 2026-11-08 / 2026-11-10
 - Repository: `E:\MyWorkspaces\CANgaroo`
 - Current branch: `develop`; the initial `build/qt-20261108` branch was created from `master`.
 - Target: Windows x64 / Qt 6.12.0 / MinGW / Release
@@ -429,3 +429,20 @@ Missing initialization access, XL configuration errors, and FD sample points tha
 - Executed a copied Python interpreter with minimal PATH and verified the copied standard library and json/encodings/math/zlib. Physical CAN hardware was outside this check.
 - Logs: `build/runtime-copy-smoke.log`, `build/runtime-copy.log`. Test interpreter and generated runtime files remain ignored under build.
 - Commit title: `build: add Windows runtime copy script`. Check Git for the actual commit ID and remote synchronization status.
+
+## 20. FEAT-007: Selected signals from multiple CAN messages in one live panel (2026-11-10)
+
+- Preserve per-message Live Edit and the existing double-click OK/Cancel editor. Open a single non-modal window with **Signal Panel** below the transmission list.
+- The left side lists signals from DBC messages already registered in the transmission list. Search signal/message/ID/interface, select multiple entries, and use **Add Selected Signals** or double-click to pin them on the right.
+- Show message name and source row number, CAN ID, interface, signal, value, unit, interval and transmission state. Pin only desired signals; do not duplicate the same signal of the same registered message.
+- Commit a Value cell with Enter or focus change to update only that signal's bits in the current authoritative message. Preserve other signals, ID/format/interface, interval and transmission state.
+- Stopped messages only change values: never start RUN or send automatically. Running messages use new values on the next existing scheduled send. The panel has no direct send/start control.
+- Synchronize existing Live Edit, OK editor, Randomize Data, interval and RUN/STOP changes. Runtime UUIDs distinguish separately registered rows even when names/IDs match.
+- **Remove from Panel** removes displayed signals only, leaving the CAN message and transmission intact. Removing a source transmission row also removes its pins.
+- Closing/reopening preserves session selection. Project reload, setup changes and Generator destruction reset it. Project persistence of the selected signal layout is outside this change.
+- Reject invalid/non-finite numbers, DBC/bit-range violations, inactive multiplexed signals and RTR signal edits. Display actual quantized physical values after committing edits.
+- New files: `TxSignalPanel.h/.cpp`, `tests/tx_signal_panel/`. Integration: `TxGeneratorWindow.h/.cpp/.ui/.pri`, `tests/tests.pro`.
+- TxSignalPanelTest: 6 passed / 0 failed, including initialization/cleanup. Qt offscreen coverage includes multiple messages with matching IDs, partial-bit edits, other-bit/state/interval preservation, duplicate pin prevention, filtering, removing pins versus messages, reopen behavior, source deletion and queued refresh, signed/scaled/64-bit bounds, and multiplexer activation.
+- Results: `build/tests/tx-signal-panel-results.txt`. Application log: `build/tx-signal-panel-build.log`. Offscreen font/size-hint warnings occurred; physical transmission and full-application manual GUI checks remain separate.
+- Commit title: `feat: add multi-message live signal panel`. Check Git for the actual commit ID and remote synchronization status.
+- Standard `build/qt-mingw-release/bin/cangaroo.exe` Release compilation/linking completed.

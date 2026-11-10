@@ -1,10 +1,12 @@
 SOURCES += \
+    $$PWD/TxSignalPanel.cpp \
     $$PWD/TxSignalListWidget.cpp \
     $$PWD/TxLiveEditDialog.cpp \
     $$PWD/TxGeneratorWindow.cpp \
     $$PWD/BitMatrixWidget.cpp
 
 HEADERS  += \
+    $$PWD/TxSignalPanel.h \
     $$PWD/TxSignalListWidget.h \
     $$PWD/TxLiveEditDialog.h \
     $$PWD/TxLiveEditUtils.h \
